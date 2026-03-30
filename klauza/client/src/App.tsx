@@ -15,6 +15,11 @@ import TemplatesPage from "@/pages/templates";
 import ClientsPage from "@/pages/clients";
 import InvoicesPage from "@/pages/invoices";
 import ChasePage from "@/pages/chase";
+import AdminPage from "@/pages/admin";
+import BlogPage from "@/pages/blog";
+import BlogPostPage from "@/pages/blog-post";
+import AboutPage from "@/pages/about";
+import ContactPage from "@/pages/contact";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
@@ -31,6 +36,27 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
     return <Redirect to="/auth" />;
   }
 
+  // Admins skip onboarding — go straight to dashboard
+  if (!user.onboardingComplete && (user as any).role !== 'admin') {
+    return <Redirect to="/auth" />;
+  }
+
+  return (
+    <AppSidebar>
+      <Component />
+    </AppSidebar>
+  );
+}
+
+function AdminRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+  if (!user) return <Redirect to="/auth" />;
+  if ((user as any).role !== 'admin') return <Redirect to="/dashboard" />;
   return (
     <AppSidebar>
       <Component />
@@ -68,6 +94,13 @@ function AppRouter() {
           )} />
         )}
       </Route>
+      <Route path="/admin">
+        {() => <AdminRoute component={AdminPage} />}
+      </Route>
+      <Route path="/blog" component={BlogPage} />
+      <Route path="/blog/:slug" component={BlogPostPage} />
+      <Route path="/about" component={AboutPage} />
+      <Route path="/contact" component={ContactPage} />
       <Route component={NotFound} />
     </Switch>
   );

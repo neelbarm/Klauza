@@ -1,7 +1,33 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertClientSchema, insertContractSchema, insertInvoiceSchema, insertDisputeSchema } from "@shared/schema";
+import { storage, db } from "./storage";
+import { users, insertClientSchema, insertContractSchema, insertInvoiceSchema, insertDisputeSchema } from "@shared/schema";
+import { eq } from "drizzle-orm";
+
+const FREE_LIMITS = { contracts: 1, invoices: 1, clients: 2, disputes: 1 };
+
+function checkPlanLimits(req: any, res: any, resource: keyof typeof FREE_LIMITS): boolean {
+  const user = req.user!;
+  if (user.plan === 'pro' || user.plan === 'enterprise') return true;
+
+  const usage = storage.getUsageStats(user.id);
+  if (usage[resource] >= FREE_LIMITS[resource]) {
+    res.status(403).json({
+      error: "upgrade_required",
+      message: `Free plan allows ${FREE_LIMITS[resource]} ${resource}. Upgrade to Pro for unlimited access.`,
+      limit: FREE_LIMITS[resource],
+      current: usage[resource],
+    });
+    return false;
+  }
+  return true;
+}
+
+function requireAdmin(req: any, res: any): boolean {
+  if (!req.isAuthenticated()) { res.status(401).json({ error: "Unauthorized" }); return false; }
+  if (req.user!.role !== 'admin') { res.status(403).json({ error: "Admin access required" }); return false; }
+  return true;
+}
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
 
@@ -14,6 +40,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/clients", (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    if (!checkPlanLimits(req, res, 'clients')) return;
     const data = { ...req.body, userId: req.user!.id };
     const parsed = insertClientSchema.safeParse(data);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
@@ -43,6 +70,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/contracts", (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    if (!checkPlanLimits(req, res, 'contracts')) return;
     const data = { ...req.body, userId: req.user!.id };
     const parsed = insertContractSchema.safeParse(data);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
@@ -65,6 +93,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/invoices", (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    if (!checkPlanLimits(req, res, 'invoices')) return;
     const data = { ...req.body, userId: req.user!.id };
     const parsed = insertInvoiceSchema.safeParse(data);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
@@ -94,6 +123,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post("/api/disputes", (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    if (!checkPlanLimits(req, res, 'disputes')) return;
     const data = { ...req.body, userId: req.user!.id };
     const parsed = insertDisputeSchema.safeParse(data);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
@@ -132,6 +162,137 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ...updated, stageName: stageNames[nextStage] });
   });
 
+  // ==================== USAGE & UPGRADE ====================
+  app.get("/api/usage", (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const usage = storage.getUsageStats(req.user!.id);
+    const limits = req.user!.plan === 'pro' || req.user!.plan === 'enterprise'
+      ? { contracts: Infinity, invoices: Infinity, clients: Infinity, disputes: Infinity }
+      : FREE_LIMITS;
+    res.json({ usage, limits, plan: req.user!.plan });
+  });
+
+  app.post("/api/upgrade", (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const updated = storage.updateUserPlan(req.user!.id, "pro");
+    res.json(updated);
+  });
+
+  // ==================== ADMIN ====================
+  app.get("/api/admin/users", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const allUsers = storage.getAllUsers();
+    const safe = allUsers.map(u => ({ ...u, password: undefined }));
+    res.json(safe);
+  });
+
+  app.get("/api/admin/stats", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const allUsers = storage.getAllUsers();
+    const proUsers = allUsers.filter(u => u.plan === 'pro');
+    const freeUsers = allUsers.filter(u => u.plan === 'free');
+    res.json({
+      totalUsers: allUsers.length,
+      proUsers: proUsers.length,
+      freeUsers: freeUsers.length,
+      mrr: proUsers.length * 80,
+      recentSignups: allUsers.slice(0, 10).map(u => ({ ...u, password: undefined })),
+    });
+  });
+
+  app.patch("/api/admin/users/:id/plan", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const { plan } = req.body;
+    if (!['free', 'pro', 'enterprise'].includes(plan)) return res.status(400).json({ error: "Invalid plan" });
+    const updated = storage.updateUserPlan(Number(req.params.id), plan);
+    if (!updated) return res.status(404).json({ error: "User not found" });
+    res.json({ ...updated, password: undefined });
+  });
+
+  app.patch("/api/admin/users/:id/role", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const { role } = req.body;
+    if (!['user', 'admin'].includes(role)) return res.status(400).json({ error: "Invalid role" });
+    const updated = storage.updateUserRole(Number(req.params.id), role);
+    if (!updated) return res.status(404).json({ error: "User not found" });
+    res.json({ ...updated, password: undefined });
+  });
+
+  app.delete("/api/admin/users/:id", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    if (Number(req.params.id) === req.user!.id) return res.status(400).json({ error: "Cannot delete yourself" });
+    storage.deleteUser(Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  // ==================== ONBOARDING ====================
+  app.post("/api/onboarding", (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const { businessName, estimatedArr, referralSource, plan } = req.body;
+
+    if (!businessName || !estimatedArr || !referralSource || !plan) {
+      return res.status(400).json({ error: "All fields required" });
+    }
+
+    const validPlans = ['free', 'pro', 'enterprise'];
+    if (!validPlans.includes(plan)) return res.status(400).json({ error: "Invalid plan" });
+
+    const updated = storage.updateUserProfile(req.user!.id, {
+      businessName,
+      estimatedArr,
+      referralSource,
+      plan,
+      onboardingComplete: 1,
+    });
+
+    res.json(updated);
+  });
+
+  // ==================== BLOG (PUBLIC) ====================
+  app.get("/api/blog", (_req, res) => {
+    const posts = storage.getBlogPosts(true);
+    res.json(posts);
+  });
+
+  app.get("/api/blog/:slug", (req, res) => {
+    const post = storage.getBlogPost(req.params.slug);
+    if (!post || !post.published) return res.status(404).json({ error: "Post not found" });
+    res.json(post);
+  });
+
+  // ==================== ADMIN BLOG CRUD ====================
+  app.get("/api/admin/blog", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    res.json(storage.getBlogPosts(false));
+  });
+
+  app.post("/api/admin/blog", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const { title, content, excerpt, category, published } = req.body;
+    if (!title || !content) return res.status(400).json({ error: "Title and content required" });
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const post = storage.createBlogPost({ title, slug, content, excerpt: excerpt || '', category: category || 'General', published: published ? 1 : 0, authorId: req.user!.id });
+    res.status(201).json(post);
+  });
+
+  app.patch("/api/admin/blog/:id", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const existing = storage.getBlogPostById(Number(req.params.id));
+    if (!existing) return res.status(404).json({ error: "Not found" });
+    const data: any = { ...req.body };
+    if (data.title) {
+      data.slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+    const updated = storage.updateBlogPost(Number(req.params.id), data);
+    res.json(updated);
+  });
+
+  app.delete("/api/admin/blog/:id", (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    storage.deleteBlogPost(Number(req.params.id));
+    res.json({ success: true });
+  });
+
   // ==================== DASHBOARD STATS ====================
   app.get("/api/dashboard", (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
@@ -165,6 +326,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       atRiskClients: allClients.filter(c => (c.riskScore || 50) >= 70).length,
     });
   });
+
+  // Create default admin account if no admin exists
+  const existingAdmin = storage.getUserByUsername("admin");
+  if (!existingAdmin) {
+    const { scryptSync, randomBytes } = await import("crypto");
+    const salt = randomBytes(16).toString("hex");
+    const hash = scryptSync("klauza-admin-2026", salt, 64).toString("hex");
+    const admin = storage.createUser({ username: "admin", password: `${hash}.${salt}`, fullName: "Klauza Admin" });
+    db.update(users).set({ role: "admin", plan: "enterprise" }).where(eq(users.id, admin.id)).run();
+    console.log("✅ Default admin created: username=admin password=klauza-admin-2026");
+  }
 
   return httpServer;
 }

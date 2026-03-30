@@ -11,6 +11,14 @@ export const users = sqliteTable("users", {
   password: text("password").notNull(),
   fullName: text("full_name"),
   plan: text("plan").default("free"), // free | pro | enterprise
+  role: text("role").default("user"), // user | admin
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  email: text("email"),
+  businessName: text("business_name"),
+  estimatedArr: text("estimated_arr"),
+  referralSource: text("referral_source"),
+  onboardingComplete: integer("onboarding_complete").default(0),
   createdAt: text("created_at").default("datetime('now')"),
 });
 
@@ -18,6 +26,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
   fullName: true,
+  email: true,
 });
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -106,3 +115,23 @@ export const disputes = sqliteTable("disputes", {
 export const insertDisputeSchema = createInsertSchema(disputes).omit({ id: true, createdAt: true });
 export type InsertDispute = z.infer<typeof insertDisputeSchema>;
 export type Dispute = typeof disputes.$inferSelect;
+
+// ============================================================================
+// BLOG POSTS — CMS
+// ============================================================================
+export const blogPosts = sqliteTable("blog_posts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
+  slug: text("slug").notNull().unique(),
+  excerpt: text("excerpt"),
+  content: text("content").notNull(),
+  category: text("category").default("General"),
+  published: integer("published").default(0), // 0=draft, 1=published
+  authorId: integer("author_id"),
+  createdAt: text("created_at").default("datetime('now')"),
+  updatedAt: text("updated_at"),
+});
+
+export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
+export type BlogPost = typeof blogPosts.$inferSelect;

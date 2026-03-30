@@ -4,6 +4,7 @@ import {
   type Contract, type InsertContract, contracts,
   type Invoice, type InsertInvoice, invoices,
   type Dispute, type InsertDispute, disputes,
+  type BlogPost, type InsertBlogPost, blogPosts,
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
@@ -20,7 +21,27 @@ sqlite.exec(`
     password TEXT NOT NULL,
     full_name TEXT,
     plan TEXT DEFAULT 'free',
+    role TEXT DEFAULT 'user',
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    email TEXT,
+    business_name TEXT,
+    estimated_arr TEXT,
+    referral_source TEXT,
+    onboarding_complete INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS blog_posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    excerpt TEXT,
+    content TEXT NOT NULL,
+    category TEXT DEFAULT 'General',
+    published INTEGER DEFAULT 0,
+    author_id INTEGER,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT
   );
   CREATE TABLE IF NOT EXISTS clients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,6 +98,16 @@ sqlite.exec(`
   );
 `);
 
+// Migrate existing databases to add new columns
+try { sqlite.exec("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'"); } catch(e) {}
+try { sqlite.exec("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT"); } catch(e) {}
+try { sqlite.exec("ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT"); } catch(e) {}
+try { sqlite.exec("ALTER TABLE users ADD COLUMN email TEXT"); } catch(e) {}
+try { sqlite.exec("ALTER TABLE users ADD COLUMN business_name TEXT"); } catch(e) {}
+try { sqlite.exec("ALTER TABLE users ADD COLUMN estimated_arr TEXT"); } catch(e) {}
+try { sqlite.exec("ALTER TABLE users ADD COLUMN referral_source TEXT"); } catch(e) {}
+try { sqlite.exec("ALTER TABLE users ADD COLUMN onboarding_complete INTEGER DEFAULT 0"); } catch(e) {}
+
 export const db = drizzle(sqlite);
 
 export interface IStorage {
@@ -84,6 +115,13 @@ export interface IStorage {
   getUser(id: number): User | undefined;
   getUserByUsername(username: string): User | undefined;
   createUser(user: InsertUser): User;
+  // Admin methods
+  getAllUsers(): User[];
+  updateUserPlan(userId: number, plan: string): User | undefined;
+  updateUserRole(userId: number, role: string): User | undefined;
+  deleteUser(userId: number): void;
+  getUserCount(): number;
+  getUsageStats(userId: number): { contracts: number; invoices: number; clients: number; disputes: number };
   // Clients
   getClients(userId: number): Client[];
   getClient(id: number, userId: number): Client | undefined;
@@ -103,6 +141,15 @@ export interface IStorage {
   getDispute(id: number, userId: number): Dispute | undefined;
   createDispute(dispute: InsertDispute): Dispute;
   updateDispute(id: number, userId: number, data: Partial<InsertDispute>): Dispute | undefined;
+  // User profile update
+  updateUserProfile(userId: number, data: Record<string, any>): User | undefined;
+  // Blog
+  getBlogPosts(publishedOnly?: boolean): BlogPost[];
+  getBlogPost(slug: string): BlogPost | undefined;
+  getBlogPostById(id: number): BlogPost | undefined;
+  createBlogPost(post: InsertBlogPost): BlogPost;
+  updateBlogPost(id: number, data: Partial<InsertBlogPost>): BlogPost | undefined;
+  deleteBlogPost(id: number): void;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -115,6 +162,31 @@ export class DatabaseStorage implements IStorage {
   }
   createUser(insertUser: InsertUser) {
     return db.insert(users).values(insertUser).returning().get();
+  }
+
+  // === ADMIN METHODS ===
+  getAllUsers() {
+    return db.select().from(users).orderBy(desc(users.id)).all();
+  }
+  updateUserPlan(userId: number, plan: string) {
+    return db.update(users).set({ plan }).where(eq(users.id, userId)).returning().get();
+  }
+  updateUserRole(userId: number, role: string) {
+    return db.update(users).set({ role }).where(eq(users.id, userId)).returning().get();
+  }
+  deleteUser(userId: number) {
+    db.delete(users).where(eq(users.id, userId)).run();
+  }
+  getUserCount() {
+    return db.select().from(users).all().length;
+  }
+  getUsageStats(userId: number) {
+    return {
+      contracts: db.select().from(contracts).where(eq(contracts.userId, userId)).all().length,
+      invoices: db.select().from(invoices).where(eq(invoices.userId, userId)).all().length,
+      clients: db.select().from(clients).where(eq(clients.userId, userId)).all().length,
+      disputes: db.select().from(disputes).where(eq(disputes.userId, userId)).all().length,
+    };
   }
 
   // === CLIENTS ===
@@ -168,6 +240,34 @@ export class DatabaseStorage implements IStorage {
   }
   updateDispute(id: number, userId: number, data: Partial<InsertDispute>) {
     return db.update(disputes).set(data).where(and(eq(disputes.id, id), eq(disputes.userId, userId))).returning().get();
+  }
+
+  // === USER PROFILE ===
+  updateUserProfile(userId: number, data: Record<string, any>) {
+    return db.update(users).set(data).where(eq(users.id, userId)).returning().get();
+  }
+
+  // === BLOG ===
+  getBlogPosts(publishedOnly = false) {
+    if (publishedOnly) {
+      return db.select().from(blogPosts).where(eq(blogPosts.published, 1)).orderBy(desc(blogPosts.id)).all();
+    }
+    return db.select().from(blogPosts).orderBy(desc(blogPosts.id)).all();
+  }
+  getBlogPost(slug: string) {
+    return db.select().from(blogPosts).where(eq(blogPosts.slug, slug)).get();
+  }
+  getBlogPostById(id: number) {
+    return db.select().from(blogPosts).where(eq(blogPosts.id, id)).get();
+  }
+  createBlogPost(post: InsertBlogPost) {
+    return db.insert(blogPosts).values(post).returning().get();
+  }
+  updateBlogPost(id: number, data: Partial<InsertBlogPost>) {
+    return db.update(blogPosts).set({ ...data, updatedAt: new Date().toISOString() }).where(eq(blogPosts.id, id)).returning().get();
+  }
+  deleteBlogPost(id: number) {
+    db.delete(blogPosts).where(eq(blogPosts.id, id)).run();
   }
 }
 

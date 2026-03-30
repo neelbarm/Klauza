@@ -41,19 +41,23 @@ function Navbar() {
           >
             Pricing
           </button>
-          <button
-            onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            data-testid="nav-faq"
-          >
-            FAQ
-          </button>
+          <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="nav-blog">
+            Blog
+          </Link>
+          <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="nav-about">
+            About
+          </Link>
         </div>
-        <Link href="/auth">
-          <Button className="rounded-full bg-foreground text-background hover:bg-foreground/90 text-sm px-5 h-9" data-testid="button-start-pro">
-            Start Pro
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="nav-login">
+            Log In
+          </Link>
+          <Link href="/auth">
+            <Button className="rounded-full bg-foreground text-background hover:bg-foreground/90 text-sm px-5 h-9" data-testid="button-signup">
+              Sign Up
+            </Button>
+          </Link>
+        </div>
       </div>
     </nav>
   );
@@ -443,10 +447,10 @@ function Footer() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider mb-3">Company</p>
           <ul className="space-y-2 text-xs text-muted-foreground">
-            <li>About</li>
-            <li>Blog</li>
+            <li><Link href="/about" className="hover:text-foreground transition-colors">About</Link></li>
+            <li><Link href="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
             <li>Careers</li>
-            <li>Contact</li>
+            <li><Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link></li>
           </ul>
         </div>
         <div>

@@ -25,6 +25,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Receipt, Loader2, Calendar, DollarSign } from "lucide-react";
 import type { Invoice, Client } from "@shared/schema";
+import { useUsage } from "@/hooks/use-usage";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 
 function formatCurrency(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
@@ -48,6 +50,7 @@ export default function InvoicesPage() {
   const [description, setDescription] = useState("");
   const [filter, setFilter] = useState("all");
   const { toast } = useToast();
+  const { data: usageData } = useUsage();
 
   const { data: invoices, isLoading } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
@@ -112,50 +115,63 @@ export default function InvoicesPage() {
           <h1 className="text-xl font-semibold">Invoices</h1>
           <p className="text-sm text-muted-foreground">Track and manage your invoices</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-new-invoice">
-              <Plus className="h-4 w-4 mr-2" />
-              New Invoice
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Invoice</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4 mt-2">
-              <div className="space-y-2">
-                <Label className="text-sm">Client</Label>
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger data-testid="select-invoice-client">
-                    <SelectValue placeholder="Select client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients?.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">Amount ($)</Label>
-                <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required data-testid="input-invoice-amount" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">Due Date</Label>
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} data-testid="input-invoice-due-date" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">Description</Label>
-                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Invoice description" rows={3} data-testid="input-invoice-description" />
-              </div>
-              <Button type="submit" className="w-full bg-primary text-primary-foreground" disabled={createMutation.isPending} data-testid="button-create-invoice">
-                {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Create Invoice
+        <div className="flex items-center gap-3">
+          {usageData && (
+            <Badge variant={usageData.plan === 'free' ? 'outline' : 'default'} className="text-[10px]">
+              {usageData.plan === 'free'
+                ? `${usageData.usage.invoices}/${usageData.limits.invoices} used`
+                : usageData.plan.toUpperCase()}
+            </Badge>
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-new-invoice">
+                <Plus className="h-4 w-4 mr-2" />
+                New Invoice
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Invoice</DialogTitle>
+              </DialogHeader>
+              {usageData?.plan === 'free' && usageData?.usage.invoices >= usageData?.limits.invoices ? (
+                <UpgradePrompt feature="invoices" current={usageData.usage.invoices} limit={usageData.limits.invoices} />
+              ) : (
+              <form onSubmit={handleCreate} className="space-y-4 mt-2">
+                <div className="space-y-2">
+                  <Label className="text-sm">Client</Label>
+                  <Select value={clientId} onValueChange={setClientId}>
+                    <SelectTrigger data-testid="select-invoice-client">
+                      <SelectValue placeholder="Select client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients?.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Amount ($)</Label>
+                  <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required data-testid="input-invoice-amount" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Due Date</Label>
+                  <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} data-testid="input-invoice-due-date" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Description</Label>
+                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Invoice description" rows={3} data-testid="input-invoice-description" />
+                </div>
+                <Button type="submit" className="w-full bg-primary text-primary-foreground" disabled={createMutation.isPending} data-testid="button-create-invoice">
+                  {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Create Invoice
+                </Button>
+              </form>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Status Filters */}

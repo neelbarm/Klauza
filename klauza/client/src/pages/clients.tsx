@@ -17,6 +17,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Users, Loader2, Mail, Building } from "lucide-react";
 import type { Client } from "@shared/schema";
+import { useUsage } from "@/hooks/use-usage";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 
 function formatCurrency(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
@@ -34,6 +36,7 @@ export default function ClientsPage() {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const { toast } = useToast();
+  const { data: usageData } = useUsage();
 
   const { data: clients, isLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -79,37 +82,50 @@ export default function ClientsPage() {
           <h1 className="text-xl font-semibold">Clients</h1>
           <p className="text-sm text-muted-foreground">Manage your client relationships</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-add-client">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Client
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Client</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4 mt-2">
-              <div className="space-y-2">
-                <Label className="text-sm">Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Client name" required data-testid="input-client-name" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">Email</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="client@example.com" data-testid="input-client-email" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">Company</Label>
-                <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company name" data-testid="input-client-company" />
-              </div>
-              <Button type="submit" className="w-full bg-primary text-primary-foreground" disabled={createMutation.isPending} data-testid="button-create-client">
-                {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+        <div className="flex items-center gap-3">
+          {usageData && (
+            <Badge variant={usageData.plan === 'free' ? 'outline' : 'default'} className="text-[10px]">
+              {usageData.plan === 'free'
+                ? `${usageData.usage.clients}/${usageData.limits.clients} used`
+                : usageData.plan.toUpperCase()}
+            </Badge>
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-add-client">
+                <Plus className="h-4 w-4 mr-2" />
                 Add Client
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Client</DialogTitle>
+              </DialogHeader>
+              {usageData?.plan === 'free' && usageData?.usage.clients >= usageData?.limits.clients ? (
+                <UpgradePrompt feature="clients" current={usageData.usage.clients} limit={usageData.limits.clients} />
+              ) : (
+              <form onSubmit={handleCreate} className="space-y-4 mt-2">
+                <div className="space-y-2">
+                  <Label className="text-sm">Name</Label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Client name" required data-testid="input-client-name" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Email</Label>
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="client@example.com" data-testid="input-client-email" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Company</Label>
+                  <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company name" data-testid="input-client-company" />
+                </div>
+                <Button type="submit" className="w-full bg-primary text-primary-foreground" disabled={createMutation.isPending} data-testid="button-create-client">
+                  {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Add Client
+                </Button>
+              </form>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Client List */}

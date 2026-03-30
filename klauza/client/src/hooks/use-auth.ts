@@ -31,18 +31,24 @@ export function useAuth() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/user"], data);
-      setLocation("/dashboard");
+      // Admins skip onboarding and go straight to dashboard
+      if (data.role === 'admin' || data.onboardingComplete) {
+        setLocation("/dashboard");
+      } else {
+        setLocation("/auth");
+      }
     },
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (data: { username: string; password: string; fullName?: string }) => {
+    mutationFn: async (data: { username: string; password: string; fullName?: string; email?: string }) => {
       const res = await apiRequest("POST", "/api/register", data);
       return await res.json();
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/user"], data);
-      setLocation("/dashboard");
+      // Don't redirect to dashboard — auth-page will detect onboarding not complete
+      setLocation("/auth");
     },
   });
 

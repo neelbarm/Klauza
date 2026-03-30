@@ -24,6 +24,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, FileText, Loader2 } from "lucide-react";
 import type { Contract, Client } from "@shared/schema";
+import { useUsage } from "@/hooks/use-usage";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 
 function formatCurrency(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
@@ -61,6 +63,7 @@ export default function TemplatesPage() {
   const [killFeePercent, setKillFeePercent] = useState("25");
   const [paymentTerms, setPaymentTerms] = useState("net30");
   const { toast } = useToast();
+  const { data: usageData } = useUsage();
 
   const { data: contracts, isLoading } = useQuery<Contract[]>({
     queryKey: ["/api/contracts"],
@@ -134,17 +137,28 @@ export default function TemplatesPage() {
           <h1 className="text-xl font-semibold">Templates</h1>
           <p className="text-sm text-muted-foreground">Manage your contracts and templates</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-new-contract">
-              <Plus className="h-4 w-4 mr-2" />
-              New Contract
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-3">
+          {usageData && (
+            <Badge variant={usageData.plan === 'free' ? 'outline' : 'default'} className="text-[10px]">
+              {usageData.plan === 'free'
+                ? `${usageData.usage.contracts}/${usageData.limits.contracts} used`
+                : usageData.plan.toUpperCase()}
+            </Badge>
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-new-contract">
+                <Plus className="h-4 w-4 mr-2" />
+                New Contract
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New Contract</DialogTitle>
             </DialogHeader>
+            {usageData?.plan === 'free' && usageData?.usage.contracts >= usageData?.limits.contracts ? (
+              <UpgradePrompt feature="contracts" current={usageData.usage.contracts} limit={usageData.limits.contracts} />
+            ) : (
             <form onSubmit={handleCreate} className="space-y-4 mt-2">
               <div className="space-y-2">
                 <Label className="text-sm">Title</Label>
@@ -208,8 +222,10 @@ export default function TemplatesPage() {
                 Create Contract
               </Button>
             </form>
+            )}
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Contract List */}

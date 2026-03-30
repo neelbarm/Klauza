@@ -10,8 +10,10 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -81,13 +83,37 @@ export function AppSidebar({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          {(user as any)?.role === 'admin' && (
+            <Link href="/admin">
+              <div
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer",
+                  location === '/admin'
+                    ? "bg-sidebar-accent text-white"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-white/80"
+                )}
+                data-testid="nav-admin"
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                {!collapsed && <span>Admin</span>}
+              </div>
+            </Link>
+          )}
         </nav>
 
         {/* User & Logout */}
         <div className="p-3 border-t border-sidebar-border">
           {!collapsed && user && (
             <div className="mb-2 px-2">
-              <p className="text-xs text-sidebar-foreground/70 truncate">{user.fullName || user.username}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-sidebar-foreground/70 truncate flex-1">{user.fullName || user.username}</p>
+                <Badge
+                  variant={(user as any).plan === 'pro' || (user as any).plan === 'enterprise' ? 'default' : 'secondary'}
+                  className="text-[10px] shrink-0"
+                >
+                  {((user as any).plan || 'free').toUpperCase()}
+                </Badge>
+              </div>
               <p className="text-[10px] text-sidebar-foreground/40 truncate">{user.username}</p>
             </div>
           )}

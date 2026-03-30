@@ -35,6 +35,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { Dispute, Client } from "@shared/schema";
+import { useUsage } from "@/hooks/use-usage";
+import { UpgradePrompt } from "@/components/upgrade-prompt";
 
 function formatCurrency(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
@@ -78,6 +80,7 @@ export default function ChasePage() {
   const [amount, setAmount] = useState("");
   const [evidence, setEvidence] = useState("");
   const { toast } = useToast();
+  const { data: usageData } = useUsage();
 
   const { data: disputes, isLoading } = useQuery<Dispute[]>({
     queryKey: ["/api/disputes"],
@@ -149,46 +152,59 @@ export default function ChasePage() {
           <h1 className="text-xl font-semibold">Chase</h1>
           <p className="text-sm text-muted-foreground">Enforce payments and manage disputes</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-new-dispute">
-              <Plus className="h-4 w-4 mr-2" />
-              New Dispute
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Dispute</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4 mt-2">
-              <div className="space-y-2">
-                <Label className="text-sm">Client</Label>
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger data-testid="select-dispute-client">
-                    <SelectValue placeholder="Select client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients?.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">Amount ($)</Label>
-                <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount owed" required data-testid="input-dispute-amount" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">Evidence / Notes</Label>
-                <Textarea value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Describe the situation and evidence..." rows={3} data-testid="input-dispute-evidence" />
-              </div>
-              <Button type="submit" className="w-full bg-primary text-primary-foreground" disabled={createMutation.isPending} data-testid="button-create-dispute">
-                {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Start Chase
+        <div className="flex items-center gap-3">
+          {usageData && (
+            <Badge variant={usageData.plan === 'free' ? 'outline' : 'default'} className="text-[10px]">
+              {usageData.plan === 'free'
+                ? `${usageData.usage.disputes}/${usageData.limits.disputes} used`
+                : usageData.plan.toUpperCase()}
+            </Badge>
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-new-dispute">
+                <Plus className="h-4 w-4 mr-2" />
+                New Dispute
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Dispute</DialogTitle>
+              </DialogHeader>
+              {usageData?.plan === 'free' && usageData?.usage.disputes >= usageData?.limits.disputes ? (
+                <UpgradePrompt feature="disputes" current={usageData.usage.disputes} limit={usageData.limits.disputes} />
+              ) : (
+              <form onSubmit={handleCreate} className="space-y-4 mt-2">
+                <div className="space-y-2">
+                  <Label className="text-sm">Client</Label>
+                  <Select value={clientId} onValueChange={setClientId}>
+                    <SelectTrigger data-testid="select-dispute-client">
+                      <SelectValue placeholder="Select client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients?.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Amount ($)</Label>
+                  <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Amount owed" required data-testid="input-dispute-amount" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Evidence / Notes</Label>
+                  <Textarea value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Describe the situation and evidence..." rows={3} data-testid="input-dispute-evidence" />
+                </div>
+                <Button type="submit" className="w-full bg-primary text-primary-foreground" disabled={createMutation.isPending} data-testid="button-create-dispute">
+                  {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Start Chase
+                </Button>
+              </form>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Dispute List */}
