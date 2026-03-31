@@ -161,7 +161,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(users).where(eq(users.username, username)).get();
   }
   createUser(insertUser: InsertUser) {
-    return db.insert(users).values(insertUser).returning().get();
+    return db.insert(users).values({ ...insertUser, createdAt: new Date().toISOString() }).returning().get();
   }
 
   // === ADMIN METHODS ===
@@ -197,7 +197,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(clients).where(and(eq(clients.id, id), eq(clients.userId, userId))).get();
   }
   createClient(client: InsertClient) {
-    return db.insert(clients).values(client).returning().get();
+    return db.insert(clients).values({ ...client, createdAt: new Date().toISOString() }).returning().get();
   }
   updateClient(id: number, userId: number, data: Partial<InsertClient>) {
     return db.update(clients).set(data).where(and(eq(clients.id, id), eq(clients.userId, userId))).returning().get();
@@ -211,7 +211,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(contracts).where(and(eq(contracts.id, id), eq(contracts.userId, userId))).get();
   }
   createContract(contract: InsertContract) {
-    return db.insert(contracts).values(contract).returning().get();
+    return db.insert(contracts).values({ ...contract, createdAt: new Date().toISOString() }).returning().get();
   }
   updateContract(id: number, userId: number, data: Partial<InsertContract>) {
     return db.update(contracts).set(data).where(and(eq(contracts.id, id), eq(contracts.userId, userId))).returning().get();
@@ -222,7 +222,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(invoices).where(eq(invoices.userId, userId)).orderBy(desc(invoices.id)).all();
   }
   createInvoice(invoice: InsertInvoice) {
-    return db.insert(invoices).values(invoice).returning().get();
+    return db.insert(invoices).values({ ...invoice, createdAt: new Date().toISOString() }).returning().get();
   }
   updateInvoice(id: number, userId: number, data: Partial<InsertInvoice>) {
     return db.update(invoices).set(data).where(and(eq(invoices.id, id), eq(invoices.userId, userId))).returning().get();
@@ -236,7 +236,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(disputes).where(and(eq(disputes.id, id), eq(disputes.userId, userId))).get();
   }
   createDispute(dispute: InsertDispute) {
-    return db.insert(disputes).values(dispute).returning().get();
+    return db.insert(disputes).values({ ...dispute, createdAt: new Date().toISOString() }).returning().get();
   }
   updateDispute(id: number, userId: number, data: Partial<InsertDispute>) {
     return db.update(disputes).set(data).where(and(eq(disputes.id, id), eq(disputes.userId, userId))).returning().get();
@@ -261,7 +261,7 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(blogPosts).where(eq(blogPosts.id, id)).get();
   }
   createBlogPost(post: InsertBlogPost) {
-    return db.insert(blogPosts).values(post).returning().get();
+    return db.insert(blogPosts).values({ ...post, createdAt: new Date().toISOString() }).returning().get();
   }
   updateBlogPost(id: number, data: Partial<InsertBlogPost>) {
     return db.update(blogPosts).set({ ...data, updatedAt: new Date().toISOString() }).where(eq(blogPosts.id, id)).returning().get();

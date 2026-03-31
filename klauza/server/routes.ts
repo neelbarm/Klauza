@@ -486,13 +486,18 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   app.get("/api/admin/stats", (req, res) => {
     if (!requireAdmin(req, res)) return;
     const allUsers = storage.getAllUsers();
-    const proUsers = allUsers.filter(u => u.plan === 'pro');
-    const freeUsers = allUsers.filter(u => u.plan === 'free');
+    const proUsers = allUsers.filter(u => u.plan === 'pro' || u.plan === 'enterprise');
+    const freeUsers = allUsers.filter(u => !u.plan || u.plan === 'free');
+    const paidMrr = allUsers.reduce((sum, u) => {
+      if (u.plan === 'pro') return sum + 80;
+      if (u.plan === 'enterprise') return sum + 350;
+      return sum;
+    }, 0);
     res.json({
       totalUsers: allUsers.length,
       proUsers: proUsers.length,
       freeUsers: freeUsers.length,
-      mrr: proUsers.length * 80,
+      mrr: paidMrr,
       recentSignups: allUsers.slice(0, 10).map(u => ({ ...u, password: undefined })),
     });
   });

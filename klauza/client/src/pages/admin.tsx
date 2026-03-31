@@ -295,7 +295,11 @@ function UsersTab() {
                       </div>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}
+                      {(() => {
+                        if (!user.createdAt) return "—";
+                        const d = new Date(user.createdAt);
+                        return isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
+                      })()}
                     </TableCell>
                     <TableCell className="text-right">
                       <AlertDialog>
@@ -491,7 +495,11 @@ function BlogTab() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : "—"}
+                      {(() => {
+                        if (!post.createdAt) return "—";
+                        const d = new Date(post.createdAt);
+                        return isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
+                      })()}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
