@@ -159,6 +159,186 @@ export async function generateProtectiveContract(context: string): Promise<strin
   return callPerplexity(CONTRACT_GENERATE_SYSTEM, context);
 }
 
+// ============================================================================
+// AI-POWERED DEMAND LETTERS & ESCALATION
+// ============================================================================
+
+export interface DemandLetterContext {
+  stage: number; // 1-4
+  amount: number; // in cents
+  clientName: string;
+  clientBusinessName?: string;
+  clientEmail?: string;
+  clientAddress?: string;
+  freelancerName: string;
+  description: string;
+  originalDueDate?: string;
+  jurisdiction: string;
+  jurisdictionInfo?: {
+    name: string;
+    demandLetterLaw: string;
+    courtSystem: string;
+    interestRate: string;
+    currencySymbol: string;
+    currencyCode: string;
+    latePaymentRef: string;
+    filingProcess: string;
+  };
+  contractText?: string;
+  evidenceList: string[];
+  daysSinceCreation: number;
+}
+
+const STAGE_PROMPTS: Record<number, string> = {
+  1: `You are writing a professional but friendly payment reminder email on behalf of a freelancer. Be warm but clear about the amount owed and deadline. Reference the specific work done and original agreement if contract text is provided. Keep it under 200 words. Include a 7-day deadline. Do NOT use legal threats at this stage.
+
+Return ONLY the email text. Start with "Subject: ..." on the first line, then a blank line, then the email body. Do not include any explanation or preamble outside the email.`,
+
+  2: `You are writing a formal payment notice on behalf of a freelancer. This is the second attempt to collect payment. Be firm and professional. Reference the specific contract terms if provided. Cite the applicable law for the jurisdiction. Include a 14-day deadline. Mention that failure to pay will result in escalation to a formal demand letter. Include the exact amount with any applicable late fees.
+
+Return ONLY the email text. Start with "Subject: ..." on the first line, then a blank line, then the email body.`,
+
+  3: `You are writing a formal legal demand letter on behalf of a freelancer. This is a serious document that may be used in court proceedings. Reference specific contract clauses if contract text is provided. Cite applicable laws for the jurisdiction. Calculate and include late fees. List all evidence on file. State that failure to pay within 10 business days will result in court filing. Use formal legal language but keep it readable. Include the freelancer's name, the client/defendant's full details, and all relevant dates. This should read like a letter from a collections department.
+
+Return ONLY the demand letter text. Start with "FORMAL DEMAND LETTER" as the header. Include all formal elements (date, addresses, RE line, etc).`,
+
+  4: `You are preparing a small claims court case summary for a freelancer. Create a structured document that includes:
+1) Case Summary (2-3 paragraphs explaining what happened)
+2) Damages Calculation (itemized: original amount, late fees, filing costs)
+3) Evidence Summary (list all evidence with descriptions)
+4) Key Contract Terms (if contract provided, list the specific breached terms)
+5) Legal Basis (cite applicable laws for the jurisdiction)
+6) Relief Sought (what the freelancer is asking the court to award)
+
+Format it clearly with section headers. Return ONLY the case summary document.`,
+};
+
+export async function generateAIDemandLetter(context: DemandLetterContext): Promise<string> {
+  const systemPrompt = STAGE_PROMPTS[context.stage];
+  if (!systemPrompt) {
+    return `[Invalid stage ${context.stage}]`;
+  }
+
+  const currSymbol = context.jurisdictionInfo?.currencySymbol || "$";
+  const amountStr = `${currSymbol}${(context.amount / 100).toFixed(2)}`;
+  const jurName = context.jurisdictionInfo?.name || context.jurisdiction;
+  const lawRef = context.jurisdictionInfo?.demandLetterLaw || "applicable contract law";
+  const courtRef = context.jurisdictionInfo?.courtSystem || "the appropriate court";
+  const interestRate = context.jurisdictionInfo?.interestRate || "1.5% per month";
+  const latePayRef = context.jurisdictionInfo?.latePaymentRef || "applicable law";
+  const filingInfo = context.jurisdictionInfo?.filingProcess || "";
+
+  const userMessage = `Generate a stage ${context.stage} escalation document with these details:
+
+FREELANCER: ${context.freelancerName}
+CLIENT/DEFENDANT: ${context.clientName}${context.clientBusinessName ? ` (d/b/a ${context.clientBusinessName})` : ""}
+CLIENT EMAIL: ${context.clientEmail || "[NOT PROVIDED]"}
+CLIENT ADDRESS: ${context.clientAddress || "[NOT PROVIDED]"}
+
+AMOUNT OWED: ${amountStr} (${context.jurisdictionInfo?.currencyCode || "USD"})
+ORIGINAL DUE DATE: ${context.originalDueDate || "[NOT SPECIFIED]"}
+DAYS OVERDUE: ${context.daysSinceCreation}
+
+JURISDICTION: ${jurName}
+APPLICABLE LAW: ${lawRef}
+COURT SYSTEM: ${courtRef}
+STATUTORY INTEREST RATE: ${interestRate}
+LATE PAYMENT REFERENCE: ${latePayRef}
+${filingInfo ? `FILING PROCESS: ${filingInfo}` : ""}
+
+DESCRIPTION OF WORK/DISPUTE:
+${context.description || "Professional services were rendered but payment has not been received."}
+
+${context.contractText ? `CONTRACT TEXT (key excerpts):\n${context.contractText.substring(0, 3000)}\n` : "No contract text available."}
+
+EVIDENCE ON FILE:
+${context.evidenceList.length > 0 ? context.evidenceList.map((e, i) => `${i + 1}. ${e}`).join("\n") : "No evidence items recorded yet."}
+
+TODAY'S DATE: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`;
+
+  // callPerplexity falls back to generateDemoAnalysis if no API key is set.
+  // Since demo analysis is designed for contract scanning, we catch that case
+  // and return empty string so the caller can fall back to templates.
+  if (!PERPLEXITY_API_KEY) {
+    return ""; // Signal to caller: use template fallback
+  }
+
+  try {
+    const result = await callPerplexity(systemPrompt, userMessage);
+    // If the result looks like the demo contract scan JSON, it means the API
+    // wasn't available and the fallback fired — return empty to trigger template fallback
+    if (result.startsWith("{") && result.includes("overallScore")) {
+      return "";
+    }
+    return result;
+  } catch {
+    return ""; // Fallback to templates
+  }
+}
+
+// ============================================================================
+// AI-POWERED CONTRACT GENERATION FROM SCAN RESULTS
+// ============================================================================
+
+const CONTRACT_FROM_SCAN_SYSTEM = `You are Klauza, an expert freelance contract writer. You are generating an ironclad freelance contract that specifically addresses risks found in a previous contract scan.
+
+For each risk identified in the scan results, include a protective clause that directly fixes or counters that risk. Include all standard contract sections:
+1. Parties & Effective Date
+2. Scope of Work
+3. Timeline & Milestones
+4. Payment Terms (with late fee clause)
+5. Kill Fee / Cancellation Policy
+6. IP Ownership (transfers only upon full payment)
+7. Revision Policy (limited rounds)
+8. Confidentiality (mutual NDA)
+9. Liability Cap (limited to contract value)
+10. Termination Clause (14-day notice, pro-rated payment)
+11. Indemnification (mutual)
+12. Dispute Resolution (mediation first, then arbitration)
+13. Force Majeure
+14. Non-Solicitation
+15. Governing Law
+16. Signature Block
+
+Make it jurisdiction-aware based on the provided jurisdiction. Use plain, enforceable language. Make it strongly protective of the freelancer while being fair to the client.
+
+IMPORTANT: For each section, if the scan found a specific risk in that area, add a comment noting what risk this clause addresses.`;
+
+export async function generateAIContractFromScan(scanResults: any, projectContext: string): Promise<string> {
+  // Build a summary of the scan results for the AI
+  const risks = scanResults?.risks || [];
+  const missingProtections = scanResults?.missingProtections || [];
+  const suggestedClauses = scanResults?.suggestedClauses || [];
+
+  const riskSummary = risks.length > 0
+    ? risks.map((r: any, i: number) => `  ${i + 1}. [${r.severity}] ${r.category}: ${r.explanation}`).join("\n")
+    : "  No specific risks identified.";
+
+  const missingSummary = missingProtections.length > 0
+    ? missingProtections.map((m: any, i: number) => `  ${i + 1}. [${m.importance}] ${m.protection}: ${m.description}`).join("\n")
+    : "  No missing protections identified.";
+
+  const clauseSummary = suggestedClauses.length > 0
+    ? suggestedClauses.map((c: any, i: number) => `  ${i + 1}. ${c.name}: ${c.reason}`).join("\n")
+    : "";
+
+  const userMessage = `${projectContext}
+
+SCAN RESULTS — RISKS FOUND:
+${riskSummary}
+
+MISSING PROTECTIONS:
+${missingSummary}
+
+${clauseSummary ? `SUGGESTED CLAUSES TO INCORPORATE:\n${clauseSummary}\n` : ""}
+OVERALL RISK SCORE: ${scanResults?.overallScore || "N/A"}/100 (${scanResults?.riskLevel || "UNKNOWN"})
+SCAN SUMMARY: ${scanResults?.summary || "N/A"}
+
+Generate a complete contract that specifically addresses ALL of the above risks and incorporates ALL suggested protections. Each protective clause should be clearly labeled.`;
+
+  return callPerplexity(CONTRACT_FROM_SCAN_SYSTEM, userMessage);
+}
+
 // Invoice parsing prompt
 const INVOICE_PARSE_SYSTEM = `You are an invoice data extraction expert. Given invoice text, extract key information and return a JSON object with this EXACT structure (no markdown, just raw JSON):
 {
@@ -245,12 +425,22 @@ const CATEGORY_CHECKS: CategoryCheck[] = [
     name: "Kill Fee / Cancellation",
     weight: 10,
     patterns: [
-      /kill\s+fee/i,
-      /cancellation\s+(fee|policy|charge|penalty)/i,
-      /early\s+termination\s+fee/i,
-      /cancellation\s+by\s+(client|company)/i,
-      /if\s+(the\s+)?(client|project)\s+(is\s+)?cancel/i,
+      /kill\s*fee/i,
+      /cancell?ation/i,
+      /cancel(l?ed|l?ing|s)?\s+(the\s+)?(project|agreement|contract|engagement|services|work)/i,
+      /(project|agreement|contract|engagement|services|work)\s+(is\s+|may\s+be\s+)?cancel/i,
+      /early\s+termination\s+(fee|penalty|charge|payment)/i,
+      /termination\s+(fee|penalty|charge|compensation)/i,
+      /break(\s*|-)?up\s+fee/i,
+      /break\s+fee/i,
+      /exit\s+fee/i,
+      /right\s+to\s+cancel/i,
+      /if\s+(the\s+)?(client|company|customer|party)\s+(decide|choose|elect|wish)s?\s+to\s+(cancel|terminate|end)/i,
+      /upon\s+(cancellation|termination).{0,40}(pay|compensat|fee|owe|due|reimburse)/i,
+      /(pay|compensat|fee|owe|due|reimburse).{0,40}(cancellation|termination)/i,
+      /pro[\s-]?rat(ed|a)\s+(payment|compensation|fee)/i,
       /restocking\s+fee/i,
+      /deposit.{0,30}(non[\s-]?refundable|retain|forfeit)/i,
     ],
     riskPatterns: [
       { pattern: /cancel\s+(at\s+)?any\s+time\s+(without|with\s+no)\s+(penalty|fee|charge|cost)/i, severity: "CRITICAL", explanation: "The client can cancel at any time with zero compensation to you. If you've turned down other work or invested significant time, you lose everything.", recommendation: "Add a sliding kill fee: 25% if canceled before start, 50% if canceled after work begins, 100% of completed work if canceled mid-project." },

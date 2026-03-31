@@ -16,7 +16,8 @@ async function loadPdfParse() {
 }
 import path from "path";
 import fs from "fs";
-import { scanContract, generateProtectiveContract, parseInvoice } from "./ai-scanner";
+import { scanContract, generateProtectiveContract, parseInvoice, generateAIDemandLetter, generateAIContractFromScan } from "./ai-scanner";
+import type { DemandLetterContext } from "./ai-scanner";
 
 const FREE_LIMITS = { contracts: 1, invoices: 1, clients: 2, disputes: 0 };
 
@@ -607,7 +608,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   }
 
   // Escalate dispute to next stage
-  app.post("/api/disputes/:id/escalate", (req, res) => {
+  app.post("/api/disputes/:id/escalate", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
     const dispute = storage.getDispute(Number(req.params.id), req.user!.id);
     if (!dispute) return res.status(404).json({ error: "Not found" });
@@ -627,15 +628,92 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     // Build escalation history
     const evidenceData = parseEvidenceData(dispute.evidence);
 
-    // Generate the escalation text with full context and user jurisdiction
+    // Get user jurisdiction
     const userJurisdiction = (req.user as any)?.jurisdiction || "US";
-    const escalation = generateEscalationText(nextStage, dispute.amount, clientName, evidenceData, userJurisdiction);
+    const jurInfo = JURISDICTION_INFO[userJurisdiction] || JURISDICTION_INFO["US"];
+
+    // Try AI-powered generation first, fall back to templates
+    let escalation: { type: string; subject: string; body: string };
+    let aiGenerated = false;
+
+    try {
+      // Build contract text if dispute has a linked contract
+      let contractText: string | undefined;
+      const contractId = evidenceData.contractId;
+      if (contractId) {
+        const contract = storage.getContract(contractId, req.user!.id);
+        if (contract?.content) {
+          contractText = contract.content;
+        }
+      }
+
+      // Build evidence list from evidence files
+      const evidenceList = (evidenceData.evidenceFiles || []).map(
+        (ef: any) => `[${ef.type?.toUpperCase() || "ITEM"}] ${ef.description || "No description"}`
+      );
+
+      // Calculate days since creation/due date
+      let daysSinceCreation = 0;
+      if (evidenceData.originalDueDate) {
+        daysSinceCreation = Math.max(0, Math.floor(
+          (Date.now() - new Date(evidenceData.originalDueDate).getTime()) / (1000 * 60 * 60 * 24)
+        ));
+      }
+
+      const aiContext: DemandLetterContext = {
+        stage: nextStage,
+        amount: dispute.amount,
+        clientName,
+        clientBusinessName: evidenceData.defendant?.businessName || undefined,
+        clientEmail: evidenceData.defendant?.email || undefined,
+        clientAddress: evidenceData.defendant?.address || undefined,
+        freelancerName: (req.user as any)?.fullName || (req.user as any)?.username || "[YOUR NAME]",
+        description: evidenceData.story || "",
+        originalDueDate: evidenceData.originalDueDate || undefined,
+        jurisdiction: userJurisdiction,
+        jurisdictionInfo: jurInfo,
+        contractText,
+        evidenceList,
+        daysSinceCreation,
+      };
+
+      const aiResult = await generateAIDemandLetter(aiContext);
+      if (aiResult && aiResult.trim().length > 50) {
+        // Parse subject from AI result if it starts with "Subject: "
+        let subject = "";
+        let body = aiResult;
+        const subjectMatch = aiResult.match(/^Subject:\s*(.+?)[\r\n]/);
+        if (subjectMatch) {
+          subject = subjectMatch[1].trim();
+          body = aiResult.substring(subjectMatch[0].length).trim();
+        } else {
+          // Generate a default subject
+          const currSym = jurInfo?.currencySymbol || "$";
+          const amountStr = `${currSym}${(dispute.amount / 100).toFixed(2)}`;
+          if (nextStage <= 2) subject = `Payment Reminder: ${amountStr} Outstanding`;
+          else if (nextStage === 3) subject = `FORMAL DEMAND FOR PAYMENT — ${amountStr}`;
+          else subject = `Small Claims Court Preparation`;
+        }
+
+        const typeMap: Record<number, string> = { 1: "email", 2: "email", 3: "demand_letter", 4: "checklist" };
+        escalation = { type: typeMap[nextStage] || "email", subject, body };
+        aiGenerated = true;
+      } else {
+        // AI returned empty — use template fallback
+        escalation = generateEscalationText(nextStage, dispute.amount, clientName, evidenceData, userJurisdiction);
+      }
+    } catch (err) {
+      console.error("AI demand letter generation failed, using template fallback:", err);
+      escalation = generateEscalationText(nextStage, dispute.amount, clientName, evidenceData, userJurisdiction);
+    }
+
     evidenceData.escalations.push({
       stage: nextStage,
       type: escalation.type,
       subject: escalation.subject,
       body: escalation.body,
       generatedAt: new Date().toISOString(),
+      aiGenerated,
     });
 
     // Store the demand letter text for backwards compat
@@ -650,7 +728,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
       demandLetter,
       evidence: JSON.stringify(evidenceData),
     });
-    res.json({ ...updated, stageName: stageNames[nextStage], escalation });
+    res.json({ ...updated, stageName: stageNames[nextStage], escalation, aiGenerated });
   });
 
   // Resolve a dispute (client paid)
@@ -1090,8 +1168,11 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
 
     try {
-      const { projectDescription, clientName, projectValue, timeline } = req.body;
+      const { projectDescription, clientName, projectValue, timeline, scanResults } = req.body;
       if (!projectDescription) return res.status(400).json({ error: "Project description required" });
+
+      const userJurisdiction = (req.user as any)?.jurisdiction || "US";
+      const jurInfo = JURISDICTION_INFO[userJurisdiction] || JURISDICTION_INFO["US"];
 
       const context = `Generate a complete freelance service agreement for:
 - Freelancer: ${req.user!.fullName || req.user!.username}
@@ -1099,10 +1180,18 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
 - Project: ${projectDescription}
 - Value: $${projectValue ? (Number(projectValue) / 100).toFixed(2) : "[TBD]"}
 - Timeline: ${timeline || "[TBD]"}
+- Jurisdiction: ${jurInfo?.name || userJurisdiction}
+- Governing Law: ${jurInfo?.demandLetterLaw || "applicable law"}
 
 Include all standard protections: kill fee, IP clause, payment terms (Net 30), revision limits, termination, liability cap, dispute resolution.`;
 
-      const contract = await generateProtectiveContract(context);
+      let contract: string;
+      if (scanResults && (scanResults.risks?.length > 0 || scanResults.missingProtections?.length > 0)) {
+        // Use AI contract generation that addresses specific scan findings
+        contract = await generateAIContractFromScan(scanResults, context);
+      } else {
+        contract = await generateProtectiveContract(context);
+      }
       res.json({ contract });
     } catch (error: any) {
       console.error("Contract generation error:", error);

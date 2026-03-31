@@ -487,6 +487,7 @@ function ScanContractTab() {
         clientName: genClientName,
         projectValue: genProjectValue ? Math.round(parseFloat(genProjectValue) * 100) : null,
         timeline: genTimeline,
+        scanResults: scanResult || undefined,
       });
       const data = await res.json();
       setGeneratedContract(data.contract);
@@ -611,7 +612,11 @@ function ScanContractTab() {
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="p-6 text-center space-y-3">
               <h3 className="font-semibold">Want a bulletproof contract instead?</h3>
-              <p className="text-sm text-muted-foreground">Generate a fully protective freelance contract with all the clauses you need.</p>
+              <p className="text-sm text-muted-foreground">
+                {scanResult?.risks?.length > 0
+                  ? `Generate a protective contract that specifically addresses the ${scanResult.risks.length} risk${scanResult.risks.length > 1 ? "s" : ""} found in your scan.`
+                  : "Generate a fully protective freelance contract with all the clauses you need."}
+              </p>
               <Dialog open={generateOpen} onOpenChange={setGenerateOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-orange-500 hover:bg-orange-600 text-white">
@@ -622,6 +627,11 @@ function ScanContractTab() {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Generate Protective Contract</DialogTitle>
+                    {scanResult?.risks?.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        AI will address {scanResult.risks.length} identified risk{scanResult.risks.length > 1 ? "s" : ""} and {scanResult.missingProtections?.length || 0} missing protection{(scanResult.missingProtections?.length || 0) !== 1 ? "s" : ""} from your scan.
+                      </p>
+                    )}
                   </DialogHeader>
                   {!generatedContract ? (
                     <div className="space-y-4 mt-2">
