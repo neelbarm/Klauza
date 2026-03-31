@@ -473,8 +473,8 @@ function TestimonialsSection() {
 // ═══════════════════════════════════════════════════════════
 function PricingSection() {
   const proFeatures = [
-    "Unlimited contract scanning",
-    "Contract risk reports across 17 categories",
+    "10 contract scans per month",
+    "Risk reports across 17 categories",
     "Jurisdiction-aware contract templates",
     "Invoice tracking with overdue detection",
     "4-stage payment chase workflow",
@@ -484,12 +484,12 @@ function PricingSection() {
   ];
   const enterpriseFeatures = [
     "Everything in Pro",
+    "50 contract scans per month",
     "Team collaboration",
     "API access",
     "Custom branding",
     "Priority support",
     "Dedicated account manager",
-    "Bulk contract scanning",
     "Advanced reporting",
   ];
 

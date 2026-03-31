@@ -26,10 +26,10 @@ const PLANS = [
     period: "/mo",
     description: "Get started risk-free",
     features: [
-      "1 contract scan",
       "2 clients",
       "1 invoice",
       "Basic dashboard",
+      "No contract scans",
     ],
   },
   {
@@ -40,12 +40,12 @@ const PLANS = [
     description: "For independent freelancers",
     featured: true,
     features: [
-      "Unlimited contracts",
+      "10 contract scans/month",
       "Unlimited clients",
       "Unlimited invoices",
       "4-stage enforcement",
       "Demand letter generation",
-      "AI contract scanning",
+      "Unlimited contract templates",
       "Full analytics dashboard",
       "Email support",
     ],
@@ -58,12 +58,12 @@ const PLANS = [
     description: "For agencies & teams",
     features: [
       "Everything in Pro",
+      "50 contract scans/month",
       "Team collaboration",
       "API access",
       "Custom branding",
       "Priority support",
       "Dedicated account manager",
-      "Bulk contract upload",
       "Advanced analytics",
     ],
   },
@@ -99,9 +99,9 @@ function BrandPanel() {
         </p>
         <div className="space-y-3">
           {[
-            "AI-powered contract scanning in 37 seconds",
-            "4-stage automated enforcement pipeline",
-            "Real-time client risk scoring",
+            "Contract risk scanning across 17 categories",
+            "4-stage payment chase workflow",
+            "Jurisdiction-aware demand letters",
           ].map((item) => (
             <div key={item} className="flex items-center gap-2 text-sm text-white/60">
               <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />

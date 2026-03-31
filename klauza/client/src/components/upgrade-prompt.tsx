@@ -36,10 +36,10 @@ export function UpgradePrompt({ feature, current, limit }: { feature: string; cu
           <span className="text-muted-foreground">/month</span>
         </div>
         <ul className="text-sm text-muted-foreground space-y-1 mb-6">
-          <li>✓ Unlimited contracts & templates</li>
+          <li>✓ 10 contract scans per month</li>
           <li>✓ Unlimited invoices & clients</li>
           <li>✓ Full Chase enforcement engine</li>
-          <li>✓ Growth dashboard & analytics</li>
+          <li>✓ Demand letter generation</li>
         </ul>
         <Button
           onClick={() => upgradeMutation.mutate()}
