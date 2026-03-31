@@ -4,9 +4,16 @@ import { storage, db } from "./storage";
 import { users, insertClientSchema, insertContractSchema, insertInvoiceSchema, insertDisputeSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import multer from "multer";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const pdfParse = require("pdf-parse");
+// pdf-parse doesn't support ESM default exports.
+// Use dynamic import wrapper that works in both dev (tsx/ESM) and prod (esbuild/CJS).
+async function loadPdfParse() {
+  try {
+    const mod = await import("pdf-parse");
+    return mod.default || mod;
+  } catch {
+    return null;
+  }
+}
 import path from "path";
 import fs from "fs";
 import { scanContract, generateProtectiveContract, parseInvoice } from "./ai-scanner";
@@ -352,6 +359,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const ext = path.extname(req.file.originalname).toLowerCase();
 
         if (ext === ".pdf") {
+          const pdfParse = await loadPdfParse();
+          if (!pdfParse) {
+            fs.unlinkSync(filePath);
+            return res.status(500).json({ error: "PDF parsing is not available" });
+          }
           const dataBuffer = fs.readFileSync(filePath);
           const pdfData = await pdfParse(dataBuffer);
           contractText = pdfData.text;
@@ -420,6 +432,11 @@ Include all standard protections: kill fee, IP clause, payment terms (Net 30), r
         const ext = path.extname(req.file.originalname).toLowerCase();
 
         if (ext === ".pdf") {
+          const pdfParse = await loadPdfParse();
+          if (!pdfParse) {
+            fs.unlinkSync(filePath);
+            return res.status(500).json({ error: "PDF parsing is not available" });
+          }
           const dataBuffer = fs.readFileSync(filePath);
           const pdfData = await pdfParse(dataBuffer);
           invoiceText = pdfData.text;
