@@ -3,8 +3,18 @@ import { createServer, type Server } from "http";
 import { storage, db } from "./storage";
 import { users, insertClientSchema, insertContractSchema, insertInvoiceSchema, insertDisputeSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import multer from "multer";
+import pdfParse from "pdf-parse";
+import path from "path";
+import fs from "fs";
+import { scanContract, generateProtectiveContract, parseInvoice } from "./ai-scanner";
 
 const FREE_LIMITS = { contracts: 1, invoices: 1, clients: 2, disputes: 1 };
+
+// File upload setup
+const uploadDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+const upload = multer({ dest: uploadDir, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB max
 
 function checkPlanLimits(req: any, res: any, resource: keyof typeof FREE_LIMITS): boolean {
   const user = req.user!;
@@ -325,6 +335,109 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       totalClients: allClients.length,
       atRiskClients: allClients.filter(c => (c.riskScore || 50) >= 70).length,
     });
+  });
+
+  // ==================== CONTRACT SCANNER ====================
+  app.post("/api/scan-contract", upload.single("file"), async (req: any, res: any) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+      let contractText = "";
+
+      if (req.file) {
+        // File uploaded — extract text
+        const filePath = req.file.path;
+        const ext = path.extname(req.file.originalname).toLowerCase();
+
+        if (ext === ".pdf") {
+          const dataBuffer = fs.readFileSync(filePath);
+          const pdfData = await pdfParse(dataBuffer);
+          contractText = pdfData.text;
+        } else if (ext === ".txt" || ext === ".md") {
+          contractText = fs.readFileSync(filePath, "utf-8");
+        } else {
+          // Try reading as text
+          contractText = fs.readFileSync(filePath, "utf-8");
+        }
+
+        // Clean up uploaded file
+        fs.unlinkSync(filePath);
+      } else if (req.body.text) {
+        // Text pasted directly
+        contractText = req.body.text;
+      } else {
+        return res.status(400).json({ error: "No contract text or file provided" });
+      }
+
+      if (contractText.trim().length < 50) {
+        return res.status(400).json({ error: "Contract text is too short to analyze. Please upload a valid contract." });
+      }
+
+      const analysis = await scanContract(contractText);
+      res.json({ analysis, textLength: contractText.length });
+    } catch (error: any) {
+      console.error("Contract scan error:", error);
+      res.status(500).json({ error: "Failed to scan contract: " + (error.message || "Unknown error") });
+    }
+  });
+
+  // Generate protective contract
+  app.post("/api/generate-contract", async (req: any, res: any) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+      const { projectDescription, clientName, projectValue, timeline } = req.body;
+      if (!projectDescription) return res.status(400).json({ error: "Project description required" });
+
+      const context = `Generate a complete freelance service agreement for:
+- Freelancer: ${req.user!.fullName || req.user!.username}
+- Client: ${clientName || "[Client Name]"}
+- Project: ${projectDescription}
+- Value: $${projectValue ? (Number(projectValue) / 100).toFixed(2) : "[TBD]"}
+- Timeline: ${timeline || "[TBD]"}
+
+Include all standard protections: kill fee, IP clause, payment terms (Net 30), revision limits, termination, liability cap, dispute resolution.`;
+
+      const contract = await generateProtectiveContract(context);
+      res.json({ contract });
+    } catch (error: any) {
+      console.error("Contract generation error:", error);
+      res.status(500).json({ error: "Failed to generate contract" });
+    }
+  });
+
+  // ==================== INVOICE PARSER ====================
+  app.post("/api/parse-invoice", upload.single("file"), async (req: any, res: any) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    try {
+      let invoiceText = "";
+
+      if (req.file) {
+        const filePath = req.file.path;
+        const ext = path.extname(req.file.originalname).toLowerCase();
+
+        if (ext === ".pdf") {
+          const dataBuffer = fs.readFileSync(filePath);
+          const pdfData = await pdfParse(dataBuffer);
+          invoiceText = pdfData.text;
+        } else {
+          invoiceText = fs.readFileSync(filePath, "utf-8");
+        }
+
+        fs.unlinkSync(filePath);
+      } else if (req.body.text) {
+        invoiceText = req.body.text;
+      } else {
+        return res.status(400).json({ error: "No invoice file or text provided" });
+      }
+
+      const parsed = await parseInvoice(invoiceText);
+      res.json({ parsed, textLength: invoiceText.length });
+    } catch (error: any) {
+      console.error("Invoice parse error:", error);
+      res.status(500).json({ error: "Failed to parse invoice" });
+    }
   });
 
   // Create default admin account if no admin exists

@@ -85,13 +85,6 @@ function HeroSection() {
           ))}
         </div>
 
-        {/* Center icon */}
-        <div className="my-8 flex justify-center">
-          <div className="w-14 h-14 rounded-xl bg-foreground flex items-center justify-center">
-            <Shield className="h-7 w-7 text-background" />
-          </div>
-        </div>
-
         {/* Bottom pills */}
         <div className="flex flex-wrap items-center justify-center gap-2">
           {["Risk Report", "Kill Fee", "Payment", "Dashboard", "Audit"].map((item) => (
