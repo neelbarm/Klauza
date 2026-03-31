@@ -64,80 +64,59 @@ function Navbar() {
 }
 
 function HeroSection() {
+  const steps = [
+    { icon: FileText, label: "Scan", sub: "Upload & analyze" },
+    { icon: Shield, label: "Protect", sub: "Flag every risk" },
+    { icon: Receipt, label: "Invoice", sub: "Track payments" },
+    { icon: Zap, label: "Enforce", sub: "Chase & collect" },
+  ];
+
   return (
-    <section className="pt-32 pb-24 px-6">
+    <section className="pt-28 pb-20 px-6">
       <div className="max-w-4xl mx-auto text-center">
+        {/* Tagline */}
+        <p className="text-xs font-display tracking-[0.3em] text-primary uppercase mb-6">Contract Intelligence for Freelancers</p>
+
         {/* Main headline */}
-        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl uppercase leading-[1.1] tracking-tight">
+        <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl uppercase leading-[1.05] tracking-tight">
           SCAN. PROTECT.{" "}
           <span className="text-primary">GET PAID.</span>
         </h1>
 
         {/* Sub copy */}
-        <p className="mt-8 text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-          One platform that replaces five — contracts, invoicing, client CRM, risk scoring, and enforcement. Built for freelancers who refuse to get stiffed.
+        <p className="mt-6 text-muted-foreground text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
+          One platform that replaces five. Built for freelancers who refuse to get stiffed.
         </p>
 
         {/* CTA buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
           <Link href="/auth">
-            <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-11 text-sm" data-testid="button-start-pro-hero">
+            <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-12 text-sm font-medium" data-testid="button-start-pro-hero">
               Start Pro — $80/mo
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
           <Button
             variant="outline"
-            className="rounded-full px-8 h-11 text-sm border-border"
+            className="rounded-full px-8 h-12 text-sm border-border"
             onClick={() => document.getElementById('solution')?.scrollIntoView({ behavior: 'smooth' })}
             data-testid="button-see-platform"
           >
             See the Platform
           </Button>
         </div>
+      </div>
 
-        {/* Workflow visualization — clean horizontal line */}
-        <div className="mt-16 relative">
-          <div className="hidden sm:flex items-center justify-center gap-0">
-            {[
-              { label: "Scan", sub: "Upload contract" },
-              { label: "Protect", sub: "Flag risks & gaps" },
-              { label: "Invoice", sub: "Track payments" },
-              { label: "Enforce", sub: "Chase & collect" },
-            ].map((step, i) => (
-              <div key={step.label} className="flex items-center">
-                <div className="flex flex-col items-center w-36">
-                  <div className="w-10 h-10 rounded-full border-2 border-primary/30 bg-background flex items-center justify-center text-sm font-display font-semibold text-primary">
-                    {i + 1}
-                  </div>
-                  <p className="text-sm font-medium mt-2.5">{step.label}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{step.sub}</p>
-                </div>
-                {i < 3 && (
-                  <div className="w-12 h-px bg-border -mt-6" />
-                )}
-              </div>
-            ))}
-          </div>
-          {/* Mobile: simple numbered list */}
-          <div className="sm:hidden flex flex-col gap-3">
-            {[
-              { label: "Scan", sub: "Upload contract" },
-              { label: "Protect", sub: "Flag risks & gaps" },
-              { label: "Invoice", sub: "Track payments" },
-              { label: "Enforce", sub: "Chase & collect" },
-            ].map((step, i) => (
-              <div key={step.label} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full border-2 border-primary/30 bg-background flex items-center justify-center text-xs font-display font-semibold text-primary shrink-0">
-                  {i + 1}
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-medium">{step.label}</p>
-                  <p className="text-xs text-muted-foreground">{step.sub}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Workflow strip — full-width dark band */}
+      <div className="mt-16 mx-auto max-w-3xl">
+        <div className="grid grid-cols-4 gap-px rounded-xl overflow-hidden border border-border bg-border">
+          {steps.map((step) => (
+            <div key={step.label} className="bg-card py-5 px-2 flex flex-col items-center text-center">
+              <step.icon className="h-5 w-5 text-primary mb-2" />
+              <p className="text-sm font-semibold">{step.label}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 hidden sm:block">{step.sub}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
