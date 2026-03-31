@@ -4,14 +4,21 @@ import { storage, db } from "./storage";
 import { users, insertClientSchema, insertContractSchema, insertInvoiceSchema, insertDisputeSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import multer from "multer";
-// pdf-parse doesn't support ESM default exports.
-// Use dynamic import wrapper that works in both dev (tsx/ESM) and prod (esbuild/CJS).
-async function loadPdfParse() {
+// pdf-parse v2 uses a class-based API: new PDFParse() → .load(buffer) → .getText()
+async function parsePdfBuffer(buffer: Buffer): Promise<string> {
   try {
     const mod = await import("pdf-parse");
-    return mod.default || mod;
-  } catch {
-    return null;
+    const PDFParse = mod.PDFParse || mod.default;
+    if (!PDFParse) throw new Error("PDFParse class not found");
+    const parser = new PDFParse({ verbosity: 0 });
+    await parser.load(buffer);
+    const text = await parser.getText();
+    parser.destroy();
+    return text || "";
+  } catch (e: any) {
+    console.error("PDF parse error:", e.message);
+    // Fallback: try reading as raw text
+    return buffer.toString("utf-8").replace(/[^\x20-\x7E\n\r\t]/g, " ");
   }
 }
 import path from "path";
@@ -1145,14 +1152,8 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
         fileName = req.file.originalname || "Uploaded Contract";
 
         if (ext === ".pdf") {
-          const pdfParse = await loadPdfParse();
-          if (!pdfParse) {
-            fs.unlinkSync(filePath);
-            return res.status(500).json({ error: "PDF parsing is not available" });
-          }
           const dataBuffer = fs.readFileSync(filePath);
-          const pdfData = await pdfParse(dataBuffer);
-          contractText = pdfData.text;
+          contractText = await parsePdfBuffer(dataBuffer);
         } else {
           contractText = fs.readFileSync(filePath, "utf-8");
         }
@@ -1205,14 +1206,8 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
         const ext = path.extname(req.file.originalname).toLowerCase();
 
         if (ext === ".pdf") {
-          const pdfParse = await loadPdfParse();
-          if (!pdfParse) {
-            fs.unlinkSync(filePath);
-            return res.status(500).json({ error: "PDF parsing is not available" });
-          }
           const dataBuffer = fs.readFileSync(filePath);
-          const pdfData = await pdfParse(dataBuffer);
-          contractText = pdfData.text;
+          contractText = await parsePdfBuffer(dataBuffer);
         } else if (ext === ".txt" || ext === ".md") {
           contractText = fs.readFileSync(filePath, "utf-8");
         } else {
@@ -1290,14 +1285,8 @@ Include all standard protections: kill fee, IP clause, payment terms (Net 30), r
         const ext = path.extname(req.file.originalname).toLowerCase();
 
         if (ext === ".pdf") {
-          const pdfParse = await loadPdfParse();
-          if (!pdfParse) {
-            fs.unlinkSync(filePath);
-            return res.status(500).json({ error: "PDF parsing is not available" });
-          }
           const dataBuffer = fs.readFileSync(filePath);
-          const pdfData = await pdfParse(dataBuffer);
-          invoiceText = pdfData.text;
+          invoiceText = await parsePdfBuffer(dataBuffer);
         } else {
           invoiceText = fs.readFileSync(filePath, "utf-8");
         }
