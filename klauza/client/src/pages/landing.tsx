@@ -65,45 +65,21 @@ function Navbar() {
 
 function HeroSection() {
   return (
-    <section className="pt-32 pb-20 px-6">
-      <div className="max-w-5xl mx-auto text-center">
+    <section className="pt-32 pb-24 px-6">
+      <div className="max-w-4xl mx-auto text-center">
         {/* Main headline */}
         <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl uppercase leading-[1.1] tracking-tight">
           SCAN. PROTECT.{" "}
           <span className="text-primary">GET PAID.</span>
         </h1>
 
-        {/* Flow diagram pills */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mt-10">
-          {["Contract", "Client", "Invoice", "Trigger"].map((item, i) => (
-            <div key={item} className="flex items-center gap-3">
-              <span className="px-4 py-2 rounded-full border border-border text-sm font-medium bg-card">
-                {item}
-              </span>
-              {i < 3 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-            </div>
-          ))}
-        </div>
-
-        {/* Bottom pills */}
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          {["Risk Report", "Kill Fee", "Payment", "Dashboard", "Audit"].map((item) => (
-            <span
-              key={item}
-              className="px-3 py-1.5 rounded-full bg-muted text-xs font-medium text-muted-foreground"
-            >
-              {item}
-            </span>
-          ))}
-        </div>
-
         {/* Sub copy */}
-        <p className="mt-10 text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-          Klauza replaces the five tools you're juggling — contracts, invoicing, client CRM, risk scoring, and enforcement — into one platform built for freelancers who refuse to get stiffed.
+        <p className="mt-8 text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+          One platform that replaces five — contracts, invoicing, client CRM, risk scoring, and enforcement. Built for freelancers who refuse to get stiffed.
         </p>
 
         {/* CTA buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
           <Link href="/auth">
             <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-11 text-sm" data-testid="button-start-pro-hero">
               Start Pro — $80/mo
@@ -118,6 +94,50 @@ function HeroSection() {
           >
             See the Platform
           </Button>
+        </div>
+
+        {/* Workflow visualization — clean horizontal line */}
+        <div className="mt-16 relative">
+          <div className="hidden sm:flex items-center justify-center gap-0">
+            {[
+              { label: "Scan", sub: "Upload contract" },
+              { label: "Protect", sub: "Flag risks & gaps" },
+              { label: "Invoice", sub: "Track payments" },
+              { label: "Enforce", sub: "Chase & collect" },
+            ].map((step, i) => (
+              <div key={step.label} className="flex items-center">
+                <div className="flex flex-col items-center w-36">
+                  <div className="w-10 h-10 rounded-full border-2 border-primary/30 bg-background flex items-center justify-center text-sm font-display font-semibold text-primary">
+                    {i + 1}
+                  </div>
+                  <p className="text-sm font-medium mt-2.5">{step.label}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{step.sub}</p>
+                </div>
+                {i < 3 && (
+                  <div className="w-12 h-px bg-border -mt-6" />
+                )}
+              </div>
+            ))}
+          </div>
+          {/* Mobile: simple numbered list */}
+          <div className="sm:hidden flex flex-col gap-3">
+            {[
+              { label: "Scan", sub: "Upload contract" },
+              { label: "Protect", sub: "Flag risks & gaps" },
+              { label: "Invoice", sub: "Track payments" },
+              { label: "Enforce", sub: "Chase & collect" },
+            ].map((step, i) => (
+              <div key={step.label} className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full border-2 border-primary/30 bg-background flex items-center justify-center text-xs font-display font-semibold text-primary shrink-0">
+                  {i + 1}
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium">{step.label}</p>
+                  <p className="text-xs text-muted-foreground">{step.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
