@@ -20,6 +20,25 @@ import { scanContract, generateProtectiveContract, parseInvoice } from "./ai-sca
 
 const FREE_LIMITS = { contracts: 1, invoices: 1, clients: 2, disputes: 0 };
 
+// Small claims court info by state
+const COURT_INFO: Record<string, { limit: number; filingFee: string; serviceFee: string; statute: string; lateFeeRate: string; courtName: string; filingUrl: string; notes: string }> = {
+  CA: { limit: 12500, filingFee: "$30–$75", serviceFee: "$25–$75", statute: "4 years (written), 2 years (oral)", lateFeeRate: "10% annually", courtName: "California Small Claims Court", filingUrl: "https://www.courts.ca.gov/selfhelp-smallclaims.htm", notes: "No attorneys allowed in small claims. Filing can be done online in some counties." },
+  TX: { limit: 20000, filingFee: "$30–$100", serviceFee: "$25–$100", statute: "4 years", lateFeeRate: "18% annually (max)", courtName: "Texas Justice Court (Small Claims)", filingUrl: "https://www.txcourts.gov/programs-services/self-help/", notes: "Attorneys are allowed. Most cases heard within 60 days of filing." },
+  FL: { limit: 8000, filingFee: "$55–$300", serviceFee: "$10–$40", statute: "5 years (written), 4 years (oral)", lateFeeRate: "18% annually (max)", courtName: "Florida Small Claims Court", filingUrl: "https://www.flcourts.gov/", notes: "Pre-trial mediation may be required. Attorneys allowed." },
+  NY: { limit: 10000, filingFee: "$15–$20", serviceFee: "$0–$25", statute: "6 years", lateFeeRate: "16% annually (max)", courtName: "New York Small Claims Court", filingUrl: "https://nycourts.gov/courts/nyc/smallclaims/", notes: "No attorneys for individuals. Hearings typically within 30 days." },
+  PA: { limit: 12000, filingFee: "$50–$100", serviceFee: "$30–$50", statute: "4 years", lateFeeRate: "6% annually", courtName: "Pennsylvania Magisterial District Court", filingUrl: "https://www.pacourts.us/", notes: "Claims filed at local magisterial district court." },
+  IL: { limit: 10000, filingFee: "$20–$75", serviceFee: "$20–$60", statute: "10 years (written), 5 years (oral)", lateFeeRate: "9% annually", courtName: "Illinois Small Claims Court", filingUrl: "https://www.illinoiscourts.gov/", notes: "Most counties offer simplified small claims procedure." },
+  OH: { limit: 6000, filingFee: "$30–$60", serviceFee: "$10–$25", statute: "8 years (written), 6 years (oral)", lateFeeRate: "8% annually", courtName: "Ohio Small Claims Court", filingUrl: "https://www.supremecourt.ohio.gov/", notes: "No attorneys unless both parties have one." },
+  GA: { limit: 15000, filingFee: "$45–$75", serviceFee: "$25–$50", statute: "6 years", lateFeeRate: "7% annually", courtName: "Georgia Magistrate Court", filingUrl: "https://georgiacourts.gov/", notes: "Claims heard in magistrate court. Attorneys allowed." },
+  NC: { limit: 10000, filingFee: "$30–$96", serviceFee: "$20–$30", statute: "3 years", lateFeeRate: "8% annually", courtName: "North Carolina Small Claims Court", filingUrl: "https://www.nccourts.gov/", notes: "Magistrate handles small claims. No jury trial." },
+  MI: { limit: 6500, filingFee: "$30–$70", serviceFee: "$15–$35", statute: "6 years", lateFeeRate: "7% annually", courtName: "Michigan Small Claims Division", filingUrl: "https://courts.michigan.gov/", notes: "No attorneys allowed. Claims filed at district court." },
+  NJ: { limit: 5000, filingFee: "$15–$50", serviceFee: "$10–$20", statute: "6 years", lateFeeRate: "6% annually", courtName: "New Jersey Small Claims Section", filingUrl: "https://www.njcourts.gov/", notes: "Part of the Special Civil Part. Mediation often offered." },
+  VA: { limit: 5000, filingFee: "$46–$80", serviceFee: "$12–$25", statute: "5 years (written), 3 years (oral)", lateFeeRate: "6% annually", courtName: "Virginia General District Court", filingUrl: "https://www.vacourts.gov/", notes: "Small claims handled by General District Court." },
+  WA: { limit: 10000, filingFee: "$14–$29", serviceFee: "$20–$50", statute: "6 years (written), 3 years (oral)", lateFeeRate: "12% annually", courtName: "Washington Small Claims Court", filingUrl: "https://www.courts.wa.gov/", notes: "No attorneys unless corporation. Very affordable filing." },
+  AZ: { limit: 3500, filingFee: "$20–$35", serviceFee: "$15–$40", statute: "6 years (written), 3 years (oral)", lateFeeRate: "10% annually", courtName: "Arizona Justice Court", filingUrl: "https://www.azcourts.gov/", notes: "Low limit but very accessible. No attorneys allowed." },
+  MA: { limit: 7000, filingFee: "$40–$60", serviceFee: "$20–$40", statute: "6 years", lateFeeRate: "12% annually", courtName: "Massachusetts Small Claims Session", filingUrl: "https://www.mass.gov/small-claims", notes: "Part of the District or Boston Municipal Court." },
+};
+
 // File upload setup
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -143,7 +162,40 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post("/api/disputes", (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
     if (!checkPlanLimits(req, res, 'disputes')) return;
-    const data = { ...req.body, userId: req.user!.id };
+
+    const { clientId, amount, description, defendantName, defendantEmail, defendantAddress,
+            defendantBusinessName, contractId, dueDate, state } = req.body;
+
+    if (!clientId || !amount) {
+      return res.status(400).json({ error: "clientId and amount are required" });
+    }
+
+    // Build structured evidence JSON
+    const deadlineDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const evidenceEnvelope = {
+      story: description || "",
+      notes: "",
+      defendant: {
+        name: defendantName || "",
+        email: defendantEmail || "",
+        address: defendantAddress || "",
+        businessName: defendantBusinessName || "",
+      },
+      contractId: contractId ? Number(contractId) : null,
+      originalDueDate: dueDate || null,
+      state: state || null,
+      evidenceFiles: [],
+      escalations: [],
+      closeReason: null,
+      deadlineDate,
+    };
+
+    const data = {
+      userId: req.user!.id,
+      clientId: Number(clientId),
+      amount: Number(amount),
+      evidence: JSON.stringify(evidenceEnvelope),
+    };
     const parsed = insertDisputeSchema.safeParse(data);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     const dispute = storage.createDispute(parsed.data);
@@ -158,32 +210,79 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   // Helper: parse the evidence JSON envelope (or migrate old format)
-  function parseEvidenceData(raw: string | null): { notes: string; escalations: any[]; closeReason: string | null } {
-    if (!raw) return { notes: "", escalations: [], closeReason: null };
+  function parseEvidenceData(raw: string | null): {
+    story: string; notes: string; defendant: { name: string; email: string; address: string; businessName: string };
+    contractId: number | null; originalDueDate: string | null; state: string | null;
+    evidenceFiles: any[]; escalations: any[]; closeReason: string | null; deadlineDate: string | null;
+  } {
+    const empty = {
+      story: "", notes: "", defendant: { name: "", email: "", address: "", businessName: "" },
+      contractId: null, originalDueDate: null, state: null,
+      evidenceFiles: [], escalations: [], closeReason: null, deadlineDate: null,
+    };
+    if (!raw) return empty;
     try {
       const parsed = JSON.parse(raw);
-      // New structured format
-      if (parsed.escalations) return parsed;
+      // New structured format with escalations
+      if (parsed.escalations || parsed.story !== undefined || parsed.defendant) {
+        return { ...empty, ...parsed };
+      }
       // Old format: array of strings
-      if (Array.isArray(parsed)) return { notes: parsed.join("; "), escalations: [], closeReason: null };
+      if (Array.isArray(parsed)) return { ...empty, notes: parsed.join("; ") };
     } catch {}
-    return { notes: raw, escalations: [], closeReason: null };
+    return { ...empty, notes: raw };
   }
 
-  // Generate stage-specific escalation text
-  function generateEscalationText(stage: number, amount: number, clientName: string): { type: string; subject: string; body: string } {
+  // Generate stage-specific escalation text with defendant info and state data
+  function generateEscalationText(
+    stage: number,
+    amount: number,
+    clientName: string,
+    evidenceData?: ReturnType<typeof parseEvidenceData>,
+  ): { type: string; subject: string; body: string } {
     const amountStr = `$${(amount / 100).toFixed(2)}`;
     const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    const defendant = evidenceData?.defendant;
+    const defName = defendant?.name || clientName;
+    const defEmail = defendant?.email || "[DEFENDANT EMAIL]";
+    const defAddress = defendant?.address || "[DEFENDANT ADDRESS]";
+    const defBusiness = defendant?.businessName || "";
+    const dueDate = evidenceData?.originalDueDate
+      ? new Date(evidenceData.originalDueDate).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+      : "[DUE DATE]";
+    const stateCode = evidenceData?.state?.toUpperCase() || null;
+    const courtInfo = stateCode ? COURT_INFO[stateCode] : null;
+    const story = evidenceData?.story || "";
+
+    // Calculate days overdue and late fees
+    let daysOverdue = 0;
+    if (evidenceData?.originalDueDate) {
+      daysOverdue = Math.max(0, Math.floor((Date.now() - new Date(evidenceData.originalDueDate).getTime()) / (1000 * 60 * 60 * 24)));
+    }
+    const lateFeeRate = courtInfo?.lateFeeRate || "1.5% per month";
+    const dailyRate = parseFloat(lateFeeRate) / 365;
+    const lateFeeAmount = Math.round((amount * dailyRate * daysOverdue) / 100);
+    const lateFeeStr = `$${(lateFeeAmount / 100).toFixed(2)}`;
+    const totalWithFees = `$${((amount + lateFeeAmount) / 100).toFixed(2)}`;
+
+    // Reference to contract if available
+    const contractRef = evidenceData?.contractId ? `Contract #${evidenceData.contractId}` : "our agreement";
+
+    // Evidence summary
+    const evidenceFiles = evidenceData?.evidenceFiles || [];
+    const evidenceSummary = evidenceFiles.length > 0
+      ? "\n\nSUPPORTING EVIDENCE ON FILE:\n" + evidenceFiles.map((ef: any, i: number) => `  ${i + 1}. [${ef.type.toUpperCase()}] ${ef.description}`).join("\n")
+      : "";
 
     if (stage === 2) {
       return {
         type: "email",
         subject: `Friendly Reminder: Outstanding Payment of ${amountStr}`,
-        body: `Hi [CLIENT NAME],
+        body: `Hi ${defName},
 
-I hope you're doing well! I wanted to follow up regarding the outstanding balance of ${amountStr} for the work I completed.
+I hope you're doing well! I wanted to follow up regarding the outstanding balance of ${amountStr} for the work I completed${defBusiness ? ` for ${defBusiness}` : ""}.
 
-I understand things get busy, and this may have simply slipped through the cracks. If you've already sent the payment, please disregard this message.
+${story ? `As a reminder, this payment relates to: ${story}\n\n` : ""}I understand things get busy, and this may have simply slipped through the cracks. If you've already sent the payment, please disregard this message.
 
 If there are any issues with the invoice or if you'd like to discuss a payment arrangement, I'm happy to chat. I value our working relationship and want to make sure we're on the same page.
 
@@ -194,84 +293,110 @@ Best regards,
 
 ---
 Amount Due: ${amountStr}
-Original Due Date: [DUE DATE]
-Date of This Notice: ${today}`,
+Original Due Date: ${dueDate}
+Days Overdue: ${daysOverdue > 0 ? `${daysOverdue} days` : "N/A"}
+Date of This Notice: ${today}
+Reference: ${contractRef}`,
       };
     }
 
     if (stage === 3) {
       return {
         type: "email",
-        subject: `Formal Notice: Payment of ${amountStr} Now Overdue`,
-        body: `Dear [CLIENT NAME],
+        subject: `Formal Notice: Payment of ${amountStr} Now ${daysOverdue} Days Overdue`,
+        body: `Dear ${defName},${defBusiness ? `\n${defBusiness}` : ""}${defAddress && defAddress !== "[DEFENDANT ADDRESS]" ? `\n${defAddress}` : ""}
 
-I am writing to formally notify you that payment of ${amountStr} remains outstanding and is now significantly overdue.
+I am writing to formally notify you that payment of ${amountStr} remains outstanding and is now ${daysOverdue > 0 ? `${daysOverdue} days` : "significantly"} overdue.
 
-Per the terms of our agreement, this payment was due on [DUE DATE]. Despite my previous reminder, I have not received payment or a response addressing this matter.
+Per the terms of ${contractRef}, this payment was due on ${dueDate}. Despite my previous reminder, I have not received payment or a response addressing this matter.
 
-Please be advised of the following:
+${story ? `BACKGROUND:\n${story}\n\n` : ""}Please be advised of the following:
 
 1. The full amount of ${amountStr} is due immediately.
-2. Per our contract terms, late payments may be subject to interest charges of 1.5% per month.
+2. Per ${stateCode ? `${stateCode} state law` : "our contract terms"}, late payments are subject to interest at ${lateFeeRate}.${daysOverdue > 0 ? ` Accrued late fees to date: ${lateFeeStr}. Total now owed: ${totalWithFees}.` : ""}
 3. I reserve the right to suspend any ongoing or future work until this balance is resolved.
 4. I retain all intellectual property rights to the delivered work until full payment is received.
 
-I strongly encourage you to resolve this matter promptly. If there are circumstances affecting your ability to pay, please contact me within 5 business days to discuss a payment plan.
+I strongly encourage you to resolve this matter within 5 business days. If there are circumstances affecting your ability to pay, please contact me to discuss a payment plan.
 
-Failure to respond or remit payment will result in further escalation, which may include formal demand proceedings.
+Failure to respond or remit payment will result in further escalation, including a formal demand letter with legal deadlines.${evidenceSummary}
 
 Sincerely,
 [YOUR NAME]
 
 ---
 Amount Due: ${amountStr}
-Original Due Date: [DUE DATE]
-Days Overdue: [DAYS OVERDUE]
+Late Fees Accrued: ${lateFeeStr}
+Total Owed: ${totalWithFees}
+Original Due Date: ${dueDate}
+Days Overdue: ${daysOverdue}
 Date of This Notice: ${today}
-Reference: Formal Notice #1`,
+Reference: ${contractRef}`,
       };
     }
 
     if (stage === 4) {
+      const courtName = courtInfo?.courtName || "Small Claims Court in [YOUR JURISDICTION]";
+      const filingUrl = courtInfo?.filingUrl || "";
+      const courtLimit = courtInfo?.limit || 10000;
+
       return {
         type: "demand_letter",
-        subject: `FORMAL DEMAND FOR PAYMENT — ${amountStr}`,
+        subject: `FORMAL DEMAND FOR PAYMENT — ${totalWithFees}`,
         body: `FORMAL DEMAND LETTER
 
 Date: ${today}
 
-TO: [CLIENT NAME]
-    [CLIENT ADDRESS]
+VIA CERTIFIED MAIL / EMAIL WITH READ RECEIPT
+
+TO: ${defName}${defBusiness ? `\n    d/b/a ${defBusiness}` : ""}
+    ${defAddress && defAddress !== "[DEFENDANT ADDRESS]" ? defAddress : "[DEFENDANT ADDRESS]"}
+    ${defEmail && defEmail !== "[DEFENDANT EMAIL]" ? defEmail : ""}
 
 FROM: [YOUR NAME]
       [YOUR ADDRESS]
+      [YOUR EMAIL]
 
-RE: DEMAND FOR PAYMENT OF ${amountStr}
+RE: FORMAL AND FINAL DEMAND FOR PAYMENT OF ${totalWithFees}
 
-Dear [CLIENT NAME],
+Dear ${defName},
 
-This letter constitutes a formal and final demand for payment of ${amountStr}, which represents compensation owed to me for professional services rendered pursuant to our agreement dated [CONTRACT DATE].
+This letter constitutes a formal and final demand for payment in connection with ${contractRef} for professional services rendered.
 
-BACKGROUND:
-I performed the agreed-upon services in full and delivered all specified work product. Payment of ${amountStr} was due on [DUE DATE] and remains unpaid despite my prior friendly reminder on [REMINDER DATE] and formal notice on [NOTICE DATE].
+STATEMENT OF FACTS:
+${story || "I performed the agreed-upon professional services in full and delivered all specified work product as required under our agreement."}
+
+Payment of ${amountStr} was due on ${dueDate} and remains unpaid as of the date of this letter — now ${daysOverdue > 0 ? `${daysOverdue} days` : "significantly"} past due.
+
+AMOUNT OWED:
+  Principal Amount:        ${amountStr}
+  Late Fees (${lateFeeRate}):  ${lateFeeStr}
+  ─────────────────────────────
+  TOTAL DUE:               ${totalWithFees}
+
+Late fees continue to accrue at ${lateFeeRate} per ${stateCode ? `${stateCode} state law` : "the terms of our agreement"}.
 
 DEMAND:
-I hereby demand full payment of ${amountStr}, plus any accrued late fees per our agreement, within ten (10) business days of your receipt of this letter.
+I hereby demand full payment of ${totalWithFees} within ten (10) calendar days of your receipt of this letter. Payment should be directed to [YOUR PAYMENT DETAILS].
 
 CONSEQUENCES OF NON-PAYMENT:
-Please be advised that if I do not receive full payment within the stated timeframe, I intend to pursue all available legal remedies, which may include but are not limited to:
+If I do not receive full payment by the deadline stated above, I intend to pursue all available legal remedies without further notice, including but not limited to:
 
-  1. Filing a claim in small claims court in [YOUR JURISDICTION]
-  2. Reporting the debt to relevant credit bureaus
-  3. Engaging a collections agency to recover the debt
-  4. Seeking recovery of the outstanding amount plus court filing fees, interest, and any attorney's fees permitted by law
+  1. Filing a claim in ${courtName}${amount / 100 <= courtLimit ? ` (your debt of ${amountStr} is within the ${stateCode || "state"} limit of $${courtLimit.toLocaleString()})` : ""}
+  2. Reporting the outstanding debt to business credit bureaus (Dun & Bradstreet, Experian Business)
+  3. Engaging a licensed collections agency
+  4. Seeking recovery of the full amount plus court filing fees, service costs, interest, and any attorney's fees as permitted by law
+  5. Pursuing a default judgment if you fail to appear
 
 INTELLECTUAL PROPERTY:
-Per our agreement, all intellectual property rights remain with me until full payment is received. Any continued use of my work product without payment constitutes unauthorized use.
+Per ${contractRef}, all intellectual property rights to the delivered work product remain with me until full payment is received. Any continued use of my work product without payment constitutes unauthorized use and may give rise to additional claims.
+${evidenceSummary}
 
-I strongly urge you to treat this matter with the urgency it deserves. I remain open to discussing a reasonable payment arrangement if you contact me within 5 business days.
+I strongly urge you to treat this matter with the urgency it deserves. I remain open to discussing a reasonable payment arrangement if you contact me within five (5) business days.
 
-This letter is written without prejudice to any and all rights and remedies available to me, all of which are expressly reserved.
+This letter is written without prejudice to any and all rights and remedies available to me under ${stateCode ? `the laws of the State of ${stateCode}` : "applicable law"} and ${contractRef}, all of which are expressly reserved.
+
+Govern yourself accordingly.
 
 Sincerely,
 
@@ -279,60 +404,84 @@ ____________________________
 [YOUR NAME]
 [YOUR EMAIL]
 [YOUR PHONE]
+${stateCode ? `\nJurisdiction: State of ${stateCode}` : ""}
 
 ---
-IMPORTANT: Keep a copy of this letter for your records. Send via certified mail or email with read receipt for documentation.`,
+IMPORTANT: Keep a copy of this letter for your records.
+Send via certified mail or email with delivery/read receipt.
+${filingUrl ? `Small claims filing info: ${filingUrl}` : ""}
+This notice satisfies the pre-suit demand requirement in most jurisdictions.`,
       };
     }
 
-    // Stage 4 → Small Claims Prep (stage would be 5 but we cap at 4, this is shown at stage 4)
+    // Small Claims Prep (shown at stage 4 alongside demand letter)
+    const courtName = courtInfo?.courtName || "your local Small Claims Court";
+    const filingFee = courtInfo?.filingFee || "$30–$100";
+    const serviceFee = courtInfo?.serviceFee || "$20–$75";
+    const statute = courtInfo?.statute || "typically 2-6 years for contract claims";
+    const courtLimit = courtInfo?.limit || 10000;
+    const courtNotes = courtInfo?.notes || "";
+    const filingUrl = courtInfo?.filingUrl || "[your local court website]";
+
     return {
       type: "checklist",
-      subject: "Small Claims Court Preparation Checklist",
+      subject: `Small Claims Court Preparation — ${stateCode || "Your State"}`,
       body: `SMALL CLAIMS COURT PREPARATION CHECKLIST
-=========================================
+${"=".repeat(50)}
 
-Dispute Amount: ${amountStr}
+Plaintiff: [YOUR NAME]
+Defendant: ${defName}${defBusiness ? ` (d/b/a ${defBusiness})` : ""}
+Defendant Address: ${defAddress && defAddress !== "[DEFENDANT ADDRESS]" ? defAddress : "[VERIFY ADDRESS BEFORE FILING]"}
+Dispute Amount: ${amountStr} (+ ${lateFeeStr} in late fees = ${totalWithFees})
+${stateCode ? `Jurisdiction: State of ${stateCode}` : ""}
+${stateCode ? `Court: ${courtName}` : ""}
 Date Prepared: ${today}
 
+${stateCode ? `STATE-SPECIFIC INFO (${stateCode}):\n${courtNotes}\n` : ""}
 BEFORE YOU FILE:
-[ ] Confirm the amount is within your state's small claims limit (typically $5,000–$10,000)
-[ ] Verify the correct legal name and address of [CLIENT NAME]
-[ ] Confirm the statute of limitations has not expired (typically 2-6 years for contract claims)
+[${amount / 100 <= courtLimit ? "x" : " "}] Amount (${amountStr}) is within ${stateCode || "your state"}'s small claims limit ($${courtLimit.toLocaleString()})
+[ ] Verified the correct legal name and address of ${defName}${defBusiness ? ` / ${defBusiness}` : ""}
+[ ] Confirmed statute of limitations has not expired (${stateCode || "your state"}: ${statute})
+[ ] Sent formal demand letter with proof of delivery (required in most states)
 
 DOCUMENTS TO GATHER:
-[ ] Original signed contract or agreement
+[ ] Original signed contract or agreement${evidenceData?.contractId ? ` (Contract #${evidenceData.contractId})` : ""}
 [ ] All invoices sent (with dates and amounts)
 [ ] Proof of work delivered (screenshots, files, emails)
-[ ] All email correspondence with the client
-[ ] Copy of the Friendly Reminder sent (Stage 1)
-[ ] Copy of the Formal Notice sent (Stage 2)
-[ ] Copy of the Demand Letter sent (Stage 3) — with proof of delivery
-[ ] Any responses or communications from the client
+[ ] All email correspondence with ${defName}
+[ ] Copy of Friendly Reminder sent (Stage 2 escalation)
+[ ] Copy of Formal Notice sent (Stage 3 escalation)
+[ ] Copy of Demand Letter sent (Stage 4 escalation) — WITH proof of delivery
+[ ] Any responses from ${defName}
 [ ] Bank/payment records showing no payment received
-[ ] Timeline of events (dates of work, delivery, invoicing, follow-ups)
+[ ] Complete timeline of events${evidenceFiles.length > 0 ? `\n[ ] Your ${evidenceFiles.length} evidence file(s) already on record` : ""}
 
 HOW TO FILE:
-1. Visit your local small claims court website or courthouse
-2. Fill out the plaintiff's claim form (sometimes called "Statement of Claim")
-3. Pay the filing fee (typically $30–$100, recoverable if you win)
-4. Serve the defendant (the client) with the court papers — follow your court's service rules
+1. Visit ${filingUrl}
+2. Fill out the plaintiff's claim form ("Statement of Claim" or "Complaint")
+3. Pay the filing fee (${filingFee} — recoverable if you win)
+4. Have ${defName} served with court papers (${serviceFee} service fee)
+   - Must use proper service method: sheriff, process server, or certified mail
 5. Attend the hearing on the scheduled date
 
 AT THE HEARING:
-[ ] Bring 3 copies of ALL documents (one for you, one for the judge, one for the defendant)
-[ ] Prepare a brief, clear summary of your case (2-3 minutes)
-[ ] Stick to the facts: what was agreed, what you delivered, what was owed, what happened
-[ ] Be professional and respectful to the judge
-[ ] Bring any witnesses if applicable
+[ ] Bring 3 copies of ALL documents (you, judge, defendant)
+[ ] Prepare a 2-3 minute factual summary:
+    - What was agreed (${contractRef})
+    - Work delivered and when
+    - Payment of ${amountStr} was due ${dueDate}
+    - ${daysOverdue > 0 ? `Payment is now ${daysOverdue} days overdue` : "Payment was never received"}
+    - Escalation steps taken (friendly reminder → formal notice → demand letter)
+[ ] Be professional and factual — judges appreciate brevity
+[ ] Bring witnesses if applicable
 
 ESTIMATED COSTS:
-- Filing fee: $30–$100
-- Service fee: $20–$75
-- Your time: 1-2 days total
-- Potential recovery: ${amountStr} + filing costs
+- Filing fee: ${filingFee}
+- Service fee: ${serviceFee}
+- Your time: 1-2 half days total
+- Potential recovery: ${totalWithFees} + filing costs + service costs
 
-NOTE: Klauza provides this checklist for informational purposes only. This is not legal advice. Consider consulting with a legal professional for specific guidance about your situation.`,
+NOTE: Klauza provides this checklist for informational purposes only. This is not legal advice. Consider consulting with a legal professional for specific guidance.`,
     };
   }
 
@@ -354,11 +503,11 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     const client = storage.getClient(dispute.clientId, req.user!.id);
     const clientName = client?.name || "[CLIENT NAME]";
 
-    // Generate the escalation text
-    const escalation = generateEscalationText(nextStage, dispute.amount, clientName);
-
     // Build escalation history
     const evidenceData = parseEvidenceData(dispute.evidence);
+
+    // Generate the escalation text with full context
+    const escalation = generateEscalationText(nextStage, dispute.amount, clientName, evidenceData);
     evidenceData.escalations.push({
       stage: nextStage,
       type: escalation.type,
@@ -457,6 +606,37 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
 
     const evidenceData = parseEvidenceData(dispute.evidence);
     res.json(evidenceData.escalations || []);
+  });
+
+  // Add evidence to a dispute
+  app.post("/api/disputes/:id/evidence", (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    const dispute = storage.getDispute(Number(req.params.id), req.user!.id);
+    if (!dispute) return res.status(404).json({ error: "Not found" });
+
+    const { type, description: desc, fileName } = req.body;
+    if (!type || !desc) return res.status(400).json({ error: "type and description are required" });
+
+    const evidenceData = parseEvidenceData(dispute.evidence);
+    evidenceData.evidenceFiles.push({
+      type, // e.g. "email", "contract", "screenshot", "invoice", "message"
+      description: desc,
+      fileName: fileName || null,
+      addedAt: new Date().toISOString(),
+    });
+
+    const updated = storage.updateDispute(Number(req.params.id), req.user!.id, {
+      evidence: JSON.stringify(evidenceData),
+    });
+    res.json(updated);
+  });
+
+  // Court info by state
+  app.get("/api/court-info/:state", (req, res) => {
+    const state = req.params.state.toUpperCase();
+    const info = COURT_INFO[state];
+    if (!info) return res.status(404).json({ error: "No court info available for this state" });
+    res.json({ state, ...info });
   });
 
   // ==================== USAGE & UPGRADE ====================

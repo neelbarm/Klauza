@@ -184,32 +184,33 @@ function ProblemSection() {
 }
 
 function SolutionSection() {
-  const features = [
+  const topFeatures = [
     {
       icon: FileText,
       title: "Contract Scanner",
-      desc: "AI-powered contract analysis scores your agreements for strength, identifies missing clauses, and suggests kill fees.",
+      desc: "Upload any contract and get a risk score across 17 categories. Identifies missing kill fees, weak IP clauses, and vague payment terms — with copy-paste fixes.",
     },
     {
       icon: Users,
       title: "Client CRM",
-      desc: "Track client risk scores, payment history, and communication in one place. Know who's reliable and who's not.",
+      desc: "Risk-score every client from 0-100. Track payment history, flag repeat offenders, and know exactly who to trust with your next project.",
     },
     {
       icon: Receipt,
       title: "Invoice Engine",
-      desc: "Create, send, and track invoices. Automatic overdue detection and escalation triggers.",
+      desc: "Create, send, and track invoices tied to contracts and clients. Automatic overdue detection triggers the Chase engine.",
     },
-    {
-      icon: Shield,
-      title: "Chase Engine",
-      desc: "4-stage enforcement: friendly reminder → formal notice → demand letter → small claims prep. Automated escalation.",
-    },
-    {
-      icon: BarChart3,
-      title: "Risk Dashboard",
-      desc: "Real-time analytics on revenue, at-risk clients, contract strength, and recovery rates.",
-    },
+  ];
+
+  const chaseFeatures = [
+    "Guided dispute filing — tell your story, we handle the rest",
+    "Professional demand letters citing real contract terms and state law",
+    "14-day response deadline with automatic escalation",
+    "Evidence organizer — contracts, emails, screenshots, receipts",
+    "State-specific small claims court info for all 50 states",
+    "Court filing checklist with fees, forms, and what to bring",
+    "4-stage pipeline: reminder → notice → demand letter → court prep",
+    "Track recovery rates and amounts across all disputes",
   ];
 
   return (
@@ -220,8 +221,10 @@ function SolutionSection() {
           ONE PLATFORM.{" "}
           <span className="text-primary">ZERO FRAGMENTATION.</span>
         </h2>
+
+        {/* Top 3 features */}
         <div className="grid md:grid-cols-3 gap-4">
-          {features.slice(0, 3).map((f) => (
+          {topFeatures.map((f) => (
             <div
               key={f.title}
               className="p-6 rounded-lg border border-white/10"
@@ -233,18 +236,46 @@ function SolutionSection() {
             </div>
           ))}
         </div>
-        <div className="grid md:grid-cols-2 gap-4 mt-4">
-          {features.slice(3).map((f) => (
-            <div
-              key={f.title}
-              className="p-6 rounded-lg border border-white/10"
-              style={{ backgroundColor: '#1e1d1a' }}
-            >
-              <f.icon className="h-5 w-5 text-primary mb-3" />
-              <h3 className="font-medium text-white text-sm mb-2">{f.title}</h3>
-              <p className="text-xs text-white/50 leading-relaxed">{f.desc}</p>
+
+        {/* Chase Engine — featured card */}
+        <div
+          className="mt-4 p-6 sm:p-8 rounded-lg border-2 border-primary/40"
+          style={{ backgroundColor: '#1e1d1a' }}
+        >
+          <div className="grid md:grid-cols-2 gap-8">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <Shield className="h-6 w-6 text-primary" />
+                <h3 className="font-display text-lg uppercase text-white tracking-wide">Chase Engine</h3>
+              </div>
+              <p className="text-sm text-white/60 leading-relaxed mb-2">
+                Your freelance collections department. When a client ghosts or refuses to pay, Klauza handles the enforcement — from professional demand letters to small claims court preparation.
+              </p>
+              <p className="text-xs text-primary/80 font-medium">
+                70% of disputes resolve after a single demand letter.
+              </p>
             </div>
-          ))}
+            <div>
+              <ul className="space-y-2">
+                {chaseFeatures.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-xs text-white/50">
+                    <Check className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Dashboard */}
+        <div
+          className="mt-4 p-6 rounded-lg border border-white/10"
+          style={{ backgroundColor: '#1e1d1a' }}
+        >
+          <BarChart3 className="h-5 w-5 text-primary mb-3" />
+          <h3 className="font-medium text-white text-sm mb-2">Risk Dashboard</h3>
+          <p className="text-xs text-white/50 leading-relaxed">Real-time analytics on revenue, at-risk clients, contract strength, and dispute recovery rates. See your entire freelance business in one view.</p>
         </div>
       </div>
     </section>
