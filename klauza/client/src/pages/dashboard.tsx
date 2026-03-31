@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,10 +11,14 @@ import {
   Shield,
   AlertTriangle,
   Users,
+  TrendingUp,
+  BarChart3,
 } from "lucide-react";
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -39,14 +44,42 @@ function formatCurrency(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
-// Generate mock revenue chart data
-function generateChartData() {
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-  return months.map((m, i) => ({
-    month: m,
-    revenue: Math.floor(Math.random() * 5000 + 2000) * 100,
-    pending: Math.floor(Math.random() * 2000 + 500) * 100,
-  }));
+// Build chart data from real invoices — group by month
+function buildRevenueChart(invoices: Invoice[] | undefined) {
+  if (!invoices || invoices.length === 0) return [];
+
+  const monthMap: Record<string, { paid: number; pending: number }> = {};
+
+  invoices.forEach((inv) => {
+    // Use createdAt or dueDate to determine the month
+    const dateStr = inv.dueDate || inv.createdAt || "";
+    let date: Date;
+    try {
+      date = new Date(dateStr);
+      if (isNaN(date.getTime())) date = new Date();
+    } catch {
+      date = new Date();
+    }
+
+    const key = date.toLocaleDateString("en-US", { year: "numeric", month: "short" });
+
+    if (!monthMap[key]) monthMap[key] = { paid: 0, pending: 0 };
+
+    if (inv.status === "paid") {
+      monthMap[key].paid += inv.amount;
+    } else if (inv.status === "sent" || inv.status === "overdue" || inv.status === "draft") {
+      monthMap[key].pending += inv.amount;
+    }
+  });
+
+  // Sort by date and return
+  return Object.entries(monthMap)
+    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+    .map(([month, data]) => ({
+      month,
+      paid: data.paid,
+      pending: data.pending,
+    }));
 }
 
 export default function DashboardPage() {
@@ -82,32 +115,38 @@ export default function DashboardPage() {
     },
   });
 
-  const chartData = generateChartData();
+  // Build chart data from actual invoices
+  const chartData = useMemo(() => buildRevenueChart(invoices), [invoices]);
+  const hasChartData = chartData.length > 0;
 
   const statCards = [
     {
       label: "Total Revenue",
-      value: stats ? formatCurrency(stats.totalRevenue) : "$0",
+      value: stats ? formatCurrency(stats.totalRevenue) : "$0.00",
       icon: DollarSign,
       color: "text-green-600",
+      bgColor: "bg-green-50",
     },
     {
       label: "Pending Revenue",
-      value: stats ? formatCurrency(stats.pendingRevenue) : "$0",
+      value: stats ? formatCurrency(stats.pendingRevenue) : "$0.00",
       icon: Clock,
       color: "text-yellow-600",
+      bgColor: "bg-yellow-50",
     },
     {
       label: "Active Contracts",
       value: stats?.activeContracts ?? 0,
       icon: FileText,
       color: "text-primary",
+      bgColor: "bg-primary/5",
     },
     {
       label: "Active Disputes",
       value: stats?.activeDisputes ?? 0,
       icon: Shield,
       color: "text-red-500",
+      bgColor: "bg-red-50",
     },
   ];
 
@@ -131,7 +170,9 @@ export default function DashboardPage() {
                     <p className="text-xs text-muted-foreground">{s.label}</p>
                     <p className="text-xl font-semibold mt-1">{s.value}</p>
                   </div>
-                  <s.icon className={`h-5 w-5 ${s.color}`} />
+                  <div className={`w-8 h-8 rounded-lg ${s.bgColor} flex items-center justify-center`}>
+                    <s.icon className={`h-4 w-4 ${s.color}`} />
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -144,52 +185,70 @@ export default function DashboardPage() {
         {/* Revenue Chart */}
         <Card className="lg:col-span-2 bg-card border-border">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Revenue Overview</CardTitle>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              Revenue Overview
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(18, 65%, 47%)" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="hsl(18, 65%, 47%)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(30, 10%, 83%)" opacity={0.3} />
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fontSize: 11, fill: 'hsl(30, 5%, 40%)' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: 'hsl(30, 5%, 40%)' }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(v) => `$${(v / 100).toFixed(0)}`}
-                  />
-                  <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                    labelStyle={{ fontSize: 12 }}
-                    contentStyle={{
-                      backgroundColor: 'hsl(30, 15%, 97%)',
-                      border: '1px solid hsl(30, 10%, 83%)',
-                      borderRadius: '6px',
-                      fontSize: 12,
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="hsl(18, 65%, 47%)"
-                    strokeWidth={2}
-                    fill="url(#revenueGrad)"
-                    name="Revenue"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            {hasChartData ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} barGap={2}>
+                    <defs>
+                      <linearGradient id="paidGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="hsl(18, 65%, 47%)" stopOpacity={0.9} />
+                        <stop offset="100%" stopColor="hsl(18, 65%, 47%)" stopOpacity={0.6} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(30, 10%, 83%)" opacity={0.3} vertical={false} />
+                    <XAxis
+                      dataKey="month"
+                      tick={{ fontSize: 11, fill: 'hsl(30, 5%, 40%)' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: 'hsl(30, 5%, 40%)' }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v) => `$${(v / 100).toLocaleString()}`}
+                    />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [
+                        formatCurrency(value),
+                        name === "paid" ? "Collected" : "Pending",
+                      ]}
+                      labelStyle={{ fontSize: 12, fontWeight: 600 }}
+                      contentStyle={{
+                        backgroundColor: 'hsl(30, 15%, 97%)',
+                        border: '1px solid hsl(30, 10%, 83%)',
+                        borderRadius: '8px',
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar
+                      dataKey="paid"
+                      fill="url(#paidGrad)"
+                      radius={[4, 4, 0, 0]}
+                      name="paid"
+                    />
+                    <Bar
+                      dataKey="pending"
+                      fill="hsl(30, 10%, 83%)"
+                      radius={[4, 4, 0, 0]}
+                      name="pending"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-64 flex flex-col items-center justify-center">
+                <BarChart3 className="h-10 w-10 text-muted-foreground/20 mb-3" />
+                <p className="text-sm text-muted-foreground font-medium">No revenue data yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Create invoices to see your revenue chart</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
