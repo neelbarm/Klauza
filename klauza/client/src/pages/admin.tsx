@@ -57,6 +57,7 @@ type AdminUser = {
 type AdminStats = {
   totalUsers: number;
   proUsers: number;
+  enterpriseUsers: number;
   freeUsers: number;
   mrr: number;
 };
@@ -185,7 +186,7 @@ function UsersTab() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats?.totalUsers ?? 0}</p>
-                  <p className="text-xs text-muted-foreground">Total Users</p>
+                  <p className="text-xs text-muted-foreground">Customers</p>
                 </div>
               </CardContent>
             </Card>
@@ -195,8 +196,8 @@ function UsersTab() {
                   <UserCheck className="h-5 w-5 text-emerald-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats?.proUsers ?? 0}</p>
-                  <p className="text-xs text-muted-foreground">Pro Users</p>
+                  <p className="text-2xl font-bold">{(stats?.proUsers ?? 0) + (stats?.enterpriseUsers ?? 0)}</p>
+                  <p className="text-xs text-muted-foreground">Paying</p>
                 </div>
               </CardContent>
             </Card>
@@ -207,7 +208,7 @@ function UsersTab() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats?.freeUsers ?? 0}</p>
-                  <p className="text-xs text-muted-foreground">Free Users</p>
+                  <p className="text-xs text-muted-foreground">Free</p>
                 </div>
               </CardContent>
             </Card>

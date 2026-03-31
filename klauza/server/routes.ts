@@ -903,16 +903,20 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   app.get("/api/admin/stats", (req, res) => {
     if (!requireAdmin(req, res)) return;
     const allUsers = storage.getAllUsers();
-    const proUsers = allUsers.filter(u => u.plan === 'pro' || u.plan === 'enterprise');
-    const freeUsers = allUsers.filter(u => !u.plan || u.plan === 'free');
-    const paidMrr = allUsers.reduce((sum, u) => {
+    // Exclude admin-role accounts from customer metrics
+    const customers = allUsers.filter(u => u.role !== 'admin');
+    const proUsers = customers.filter(u => u.plan === 'pro');
+    const enterpriseUsers = customers.filter(u => u.plan === 'enterprise');
+    const freeUsers = customers.filter(u => !u.plan || u.plan === 'free');
+    const paidMrr = customers.reduce((sum, u) => {
       if (u.plan === 'pro') return sum + 80;
       if (u.plan === 'enterprise') return sum + 350;
       return sum;
     }, 0);
     res.json({
-      totalUsers: allUsers.length,
+      totalUsers: customers.length,
       proUsers: proUsers.length,
+      enterpriseUsers: enterpriseUsers.length,
       freeUsers: freeUsers.length,
       mrr: paidMrr,
       recentSignups: allUsers.slice(0, 10).map(u => ({ ...u, password: undefined })),
