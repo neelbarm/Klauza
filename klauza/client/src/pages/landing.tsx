@@ -79,7 +79,7 @@ function HeroSection() {
           Protection for experienced freelancers
         </p>
 
-        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl uppercase leading-[1.08] tracking-tight">
+        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] uppercase leading-[1.12] tracking-tight max-w-3xl mx-auto">
           Protect your freelance work{" "}
           <span className="text-primary">before clients cost you money.</span>
         </h1>
@@ -102,6 +102,34 @@ function HeroSection() {
           >
             See Payment Chase Workflow
           </Button>
+        </div>
+
+        {/* Mock scan result preview */}
+        <div className="mt-12 max-w-md mx-auto p-4 rounded-lg border border-border bg-card text-left">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-red-500" />
+            <p className="text-xs font-medium text-red-600">3 risks found</p>
+            <div className="w-2 h-2 rounded-full bg-yellow-500 ml-2" />
+            <p className="text-xs font-medium text-yellow-600">2 missing protections</p>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium shrink-0">HIGH</span>
+              <p className="text-xs text-muted-foreground">No kill fee clause — client can cancel without compensation</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium shrink-0">HIGH</span>
+              <p className="text-xs text-muted-foreground">Payment terms missing — no defined due date or late penalties</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium shrink-0">MED</span>
+              <p className="text-xs text-muted-foreground">IP ownership clause is vague — rights transfer ambiguous</p>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">Safety Score</p>
+            <p className="text-sm font-bold text-red-600">28/100</p>
+          </div>
         </div>
       </div>
     </section>
@@ -133,6 +161,27 @@ function ProofBar() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// 2b. PROOF EXAMPLE — real scan result callout
+// ═══════════════════════════════════════════════════════════
+function ProofExample() {
+  return (
+    <div className="py-8 px-6">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center gap-4 p-4 rounded-lg border border-primary/20 bg-primary/5">
+          <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+          </div>
+          <div>
+            <p className="text-sm font-medium">Real scan result: Flagged a missing $2,400 kill fee clause</p>
+            <p className="text-xs text-muted-foreground mt-0.5">One scan. One fix. $2,400 protected.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // 3. HOW IT WORKS — 3-step protection flow
 // ═══════════════════════════════════════════════════════════
 function HowItWorks() {
@@ -159,27 +208,25 @@ function HowItWorks() {
 
   return (
     <section className="py-20 px-6" id="how-it-works">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-5xl mx-auto text-center">
         <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">How It Works</p>
         <h2 className="font-display text-2xl sm:text-3xl uppercase mb-4 leading-tight">
           Before you sign.{" "}
           <span className="text-primary">After they stall.</span>
         </h2>
-        <p className="text-sm text-muted-foreground mb-12 max-w-xl">
+        <p className="text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
           Klauza covers the two moments that actually cost freelancers money: signing weak terms, and chasing clients who won't pay.
         </p>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-8 text-center">
           {steps.map((step) => (
-            <div key={step.num} className="relative">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <step.icon className="h-4 w-4 text-primary" />
-                </div>
-                <span className="font-display text-xs text-primary/40 tracking-widest">{step.num}</span>
+            <div key={step.num} className="flex flex-col items-center">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                <step.icon className="h-5 w-5 text-primary" />
               </div>
+              <span className="font-display text-[10px] text-primary/40 tracking-widest mb-2">{step.num}</span>
               <h3 className="font-semibold text-sm mb-2">{step.title}</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">{step.desc}</p>
             </div>
           ))}
         </div>
@@ -217,21 +264,21 @@ function OutcomesSection() {
 
   return (
     <section className="py-20 px-6" id="protection" style={{ backgroundColor: '#141412' }}>
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto text-center">
         <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">What You Get</p>
         <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight text-white mb-4">
           Protection that covers{" "}
           <span className="text-primary">every stage.</span>
         </h2>
-        <p className="text-sm text-white/50 mb-12 max-w-xl">
+        <p className="text-sm text-white/50 mb-12 max-w-xl mx-auto">
           Before you sign, while you work, and when things go wrong.
         </p>
 
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 gap-4 text-left">
           {outcomes.map((o) => (
             <div
               key={o.title}
-              className="p-6 rounded-lg border border-white/10"
+              className="p-5 sm:p-6 rounded-lg border border-white/10"
               style={{ backgroundColor: '#1e1d1a' }}
             >
               <o.icon className="h-5 w-5 text-primary mb-3" />
@@ -258,30 +305,27 @@ function ChaseSection() {
 
   return (
     <section className="py-20 px-6 bg-card" id="chase">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-5xl mx-auto text-center">
         <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">When Clients Stall</p>
         <h2 className="font-display text-2xl sm:text-3xl uppercase mb-4 leading-tight">
           A clear path from{" "}
           <span className="text-primary">overdue to resolved.</span>
         </h2>
-        <p className="text-sm text-muted-foreground mb-12 max-w-xl">
+        <p className="text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
           Most freelancers freeze when a client stops paying. Klauza gives you a structured process — each step more serious than the last — so you never have to figure out what to do next.
         </p>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-left">
           {stages.map((stage, i) => (
-            <div key={stage.label} className="p-5 rounded-lg border border-border bg-background">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-display font-bold text-primary">{i + 1}</span>
-                <p className="text-xs text-muted-foreground font-medium">Stage {i + 1}</p>
-              </div>
+            <div key={stage.label} className="p-4 sm:p-5 rounded-lg border border-border bg-background">
+              <span className="inline-flex w-7 h-7 rounded-full bg-primary/10 items-center justify-center text-xs font-display font-bold text-primary mb-3">{i + 1}</span>
               <h3 className="text-sm font-semibold mb-1.5">{stage.label}</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">{stage.desc}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-8 p-5 rounded-lg border border-primary/20 bg-primary/5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="mt-8 p-5 rounded-lg border border-primary/20 bg-primary/5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
           <div className="flex-1">
             <p className="text-sm font-medium">Every letter references your actual contract terms and jurisdiction-specific law.</p>
             <p className="text-xs text-muted-foreground mt-1">Supports US, UK, Canada, Nigeria, EU, Australia, India, and South Africa.</p>
@@ -303,14 +347,14 @@ function ChaseSection() {
 function DifferentiationSection() {
   return (
     <section className="py-20 px-6">
-      <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-        <div>
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-10">
           <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Why Klauza</p>
           <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight mb-6">
             More than{" "}
             <span className="text-primary">admin software.</span>
           </h2>
-          <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
+          <div className="space-y-4 text-sm text-muted-foreground leading-relaxed max-w-2xl mx-auto">
             <p>
               Most freelancer tools help you send invoices and manage projects. They work fine — until a client sends you a contract with no kill fee, pays 60 days late, or stops responding entirely.
             </p>
@@ -319,7 +363,7 @@ function DifferentiationSection() {
             </p>
           </div>
         </div>
-        <div className="space-y-3">
+        <div className="grid sm:grid-cols-2 gap-3 max-w-lg mx-auto">
           {[
             { label: "Generic tools", desc: "Proposals, invoices, time tracking", muted: true },
             { label: "Klauza", desc: "Risk scanning, payment protection, structured enforcement", muted: false },
@@ -453,7 +497,7 @@ function PricingSection() {
     <section className="py-20 px-6" id="pricing">
       <div className="max-w-4xl mx-auto">
         <p className="text-xs font-display tracking-widest text-primary uppercase mb-4 text-center">Pricing</p>
-        <h2 className="font-display text-2xl sm:text-3xl uppercase mb-3 text-center leading-tight">
+        <h2 className="font-display text-xl sm:text-2xl md:text-3xl uppercase mb-3 text-center leading-tight max-w-2xl mx-auto">
           One missed payment costs more{" "}
           <span className="text-primary">than a year of Klauza.</span>
         </h2>
@@ -613,6 +657,7 @@ export default function LandingPage() {
       <Navbar />
       <HeroSection />
       <ProofBar />
+      <ProofExample />
       <HowItWorks />
       <OutcomesSection />
       <ChaseSection />

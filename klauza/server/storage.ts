@@ -108,6 +108,8 @@ try { sqlite.exec("ALTER TABLE users ADD COLUMN estimated_arr TEXT"); } catch(e)
 try { sqlite.exec("ALTER TABLE users ADD COLUMN referral_source TEXT"); } catch(e) {}
 try { sqlite.exec("ALTER TABLE users ADD COLUMN onboarding_complete INTEGER DEFAULT 0"); } catch(e) {}
 try { sqlite.exec("ALTER TABLE users ADD COLUMN jurisdiction TEXT DEFAULT 'US'"); } catch(e) {}
+try { sqlite.exec("ALTER TABLE users ADD COLUMN scans_used INTEGER DEFAULT 0"); } catch(e) {}
+try { sqlite.exec("ALTER TABLE users ADD COLUMN scans_reset_date TEXT"); } catch(e) {}
 
 export const db = drizzle(sqlite);
 
@@ -144,6 +146,10 @@ export interface IStorage {
   updateDispute(id: number, userId: number, data: Partial<InsertDispute>): Dispute | undefined;
   // User profile update
   updateUserProfile(userId: number, data: Record<string, any>): User | undefined;
+  // Scan usage
+  getScanUsage(userId: number): { scansUsed: number; scansLimit: number; plan: string; resetDate: string | null };
+  incrementScanUsage(userId: number): void;
+  resetScanUsage(userId: number): void;
   // Blog
   getBlogPosts(publishedOnly?: boolean): BlogPost[];
   getBlogPost(slug: string): BlogPost | undefined;
@@ -246,6 +252,23 @@ export class DatabaseStorage implements IStorage {
   // === USER PROFILE ===
   updateUserProfile(userId: number, data: Record<string, any>) {
     return db.update(users).set(data).where(eq(users.id, userId)).returning().get();
+  }
+
+  // === SCAN USAGE ===
+  getScanUsage(userId: number) {
+    const user = db.select().from(users).where(eq(users.id, userId)).get();
+    const plan = (user as any)?.plan || "free";
+    const scansUsed = (user as any)?.scansUsed || 0;
+    const resetDate = (user as any)?.scansResetDate || null;
+    const limitMap: Record<string, number> = { free: 0, pro: 10, enterprise: 50 };
+    return { scansUsed, scansLimit: limitMap[plan] ?? 0, plan, resetDate };
+  }
+  incrementScanUsage(userId: number) {
+    sqlite.exec(`UPDATE users SET scans_used = COALESCE(scans_used, 0) + 1 WHERE id = ${userId}`);
+  }
+  resetScanUsage(userId: number) {
+    const newDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    sqlite.exec(`UPDATE users SET scans_used = 0, scans_reset_date = '${newDate}' WHERE id = ${userId}`);
   }
 
   // === BLOG ===

@@ -21,6 +21,13 @@ import type { DemandLetterContext } from "./ai-scanner";
 
 const FREE_LIMITS = { contracts: 1, invoices: 1, clients: 2, disputes: 0 };
 
+const SCAN_LIMITS: Record<string, number> = {
+  free: parseInt(process.env.PERPLEXITY_SCANS_FREE || "0"),
+  pro: parseInt(process.env.PERPLEXITY_SCANS_PRO || "10"),
+  enterprise: parseInt(process.env.PERPLEXITY_SCANS_ENTERPRISE || "50"),
+};
+const OVERAGE_PRICE = parseInt(process.env.PERPLEXITY_OVERAGE_PRICE || "10");
+
 // Small claims court info by state
 const COURT_INFO: Record<string, { limit: number; filingFee: string; serviceFee: string; statute: string; lateFeeRate: string; courtName: string; filingUrl: string; notes: string }> = {
   CA: { limit: 12500, filingFee: "$30–$75", serviceFee: "$25–$75", statute: "4 years (written), 2 years (oral)", lateFeeRate: "10% annually", courtName: "California Small Claims Court", filingUrl: "https://www.courts.ca.gov/selfhelp-smallclaims.htm", notes: "No attorneys allowed in small claims. Filing can be done online in some counties." },
@@ -1060,9 +1067,73 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     res.json({ scanResults });
   });
 
+  // ==================== SCAN USAGE & LIMITS ====================
+
+  // Helper: auto-reset scan usage if reset date has passed
+  function autoResetScans(userId: number) {
+    const usage = storage.getScanUsage(userId);
+    if (!usage.resetDate || new Date(usage.resetDate) <= new Date()) {
+      storage.resetScanUsage(userId);
+    }
+  }
+
+  // Helper: check scan limits, returns error response object or null if OK
+  function checkScanLimits(req: any): { status: number; body: any } | null {
+    const userId = req.user!.id;
+    autoResetScans(userId);
+    const usage = storage.getScanUsage(userId);
+    const plan = usage.plan || "free";
+    const limit = SCAN_LIMITS[plan] ?? 0;
+
+    if (plan === "free" && limit === 0) {
+      return {
+        status: 403,
+        body: { error: "upgrade_required", message: "Free plan does not include contract scanning. Upgrade to Pro.", scansRemaining: 0 },
+      };
+    }
+
+    if (usage.scansUsed >= limit) {
+      return {
+        status: 403,
+        body: {
+          error: "scan_limit_reached",
+          message: "You've used all your scans this month.",
+          scansUsed: usage.scansUsed,
+          scansLimit: limit,
+          overagePrice: OVERAGE_PRICE,
+          nextReset: usage.resetDate,
+        },
+      };
+    }
+
+    return null; // OK to proceed
+  }
+
+  app.get("/api/scan-usage", (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    autoResetScans(req.user!.id);
+    const usage = storage.getScanUsage(req.user!.id);
+    const plan = usage.plan || "free";
+    const limit = SCAN_LIMITS[plan] ?? 0;
+    res.json({
+      scansUsed: usage.scansUsed,
+      scansLimit: limit,
+      scansRemaining: Math.max(0, limit - usage.scansUsed),
+      plan,
+      resetDate: usage.resetDate,
+      overagePrice: OVERAGE_PRICE,
+    });
+  });
+
   // Scan and save in one step: upload/paste -> scan -> create contract record
   app.post("/api/scan-and-save", upload.single("file"), async (req: any, res: any) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    // Check scan limits (skip if overage=true is sent from frontend)
+    if (!req.body.overage) {
+      const limitError = checkScanLimits(req);
+      if (limitError) return res.status(limitError.status).json(limitError.body);
+    }
 
     try {
       let contractText = "";
@@ -1097,6 +1168,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
         return res.status(400).json({ error: "Contract text is too short to analyze." });
       }
 
+      storage.incrementScanUsage(req.user!.id);
       const analysis = await scanContract(contractText);
       const contract = storage.createContract({
         userId: req.user!.id,
@@ -1117,6 +1189,12 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   // ==================== CONTRACT SCANNER ====================
   app.post("/api/scan-contract", upload.single("file"), async (req: any, res: any) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+
+    // Check scan limits (skip if overage=true is sent from frontend)
+    if (!req.body.overage) {
+      const limitError = checkScanLimits(req);
+      if (limitError) return res.status(limitError.status).json(limitError.body);
+    }
 
     try {
       let contractText = "";
@@ -1155,6 +1233,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
         return res.status(400).json({ error: "Contract text is too short to analyze. Please upload a valid contract." });
       }
 
+      storage.incrementScanUsage(req.user!.id);
       const analysis = await scanContract(contractText);
       res.json({ analysis, textLength: contractText.length });
     } catch (error: any) {

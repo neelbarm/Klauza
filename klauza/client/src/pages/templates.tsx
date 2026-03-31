@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -412,8 +413,25 @@ function ScanContractTab() {
   const [generatedContract, setGeneratedContract] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedContractId, setSavedContractId] = useState<number | null>(null);
+  const [overageMode, setOverageMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Scan usage tracking
+  const { data: scanUsage } = useQuery<{
+    scansUsed: number;
+    scansLimit: number;
+    scansRemaining: number;
+    plan: string;
+    resetDate: string | null;
+    overagePrice: number;
+  }>({
+    queryKey: ["/api/scan-usage"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/scan-usage");
+      return res.json();
+    },
+  });
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -422,7 +440,7 @@ function ScanContractTab() {
     if (dropped) setFile(dropped);
   };
 
-  const handleScan = async () => {
+  const handleScan = async (useOverage = false) => {
     setScanError("");
     setScanning(true);
     setSavedContractId(null);
@@ -430,6 +448,7 @@ function ScanContractTab() {
       if (file) {
         const formData = new FormData();
         formData.append("file", file);
+        if (useOverage) formData.append("overage", "true");
         const res = await fetch(`${API_BASE}/api/scan-contract`, {
           method: "POST",
           body: formData,
@@ -437,12 +456,20 @@ function ScanContractTab() {
         });
         if (!res.ok) {
           const err = await res.json();
+          if (err.error === "upgrade_required" || err.error === "scan_limit_reached") {
+            setScanError(err.message);
+            setScanning(false);
+            queryClient.invalidateQueries({ queryKey: ["/api/scan-usage"] });
+            return;
+          }
           throw new Error(err.error || "Scan failed");
         }
         const data = await res.json();
         setScanResult(data.analysis);
       } else if (pastedText.trim()) {
-        const res = await apiRequest("POST", "/api/scan-contract", { text: pastedText });
+        const body: any = { text: pastedText };
+        if (useOverage) body.overage = true;
+        const res = await apiRequest("POST", "/api/scan-contract", body);
         const data = await res.json();
         setScanResult(data.analysis);
       } else {
@@ -450,8 +477,15 @@ function ScanContractTab() {
         setScanning(false);
         return;
       }
+      queryClient.invalidateQueries({ queryKey: ["/api/scan-usage"] });
+      setOverageMode(false);
     } catch (err: any) {
-      setScanError(err.message || "Failed to scan contract.");
+      if (err.message?.includes("upgrade_required") || err.message?.includes("scan_limit_reached") || err.message?.includes("used all your scans")) {
+        setScanError(err.message);
+        queryClient.invalidateQueries({ queryKey: ["/api/scan-usage"] });
+      } else {
+        setScanError(err.message || "Failed to scan contract.");
+      }
     }
     setScanning(false);
   };
@@ -502,8 +536,69 @@ function ScanContractTab() {
     toast({ title: "Copied!", description: "Contract copied to clipboard." });
   };
 
+  const scansRemaining = scanUsage?.scansRemaining ?? 0;
+  const scansLimit = scanUsage?.scansLimit ?? 0;
+  const scansUsed = scanUsage?.scansUsed ?? 0;
+  const scanPlan = scanUsage?.plan || "free";
+  const resetDateStr = scanUsage?.resetDate
+    ? new Date(scanUsage.resetDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : null;
+  const usagePercent = scansLimit > 0 ? Math.min(100, Math.round((scansUsed / scansLimit) * 100)) : 100;
+  const usageColor = scansRemaining === 0 ? "bg-red-500" : scansRemaining <= 3 ? "bg-orange-500" : "bg-green-500";
+  const scanDisabled = scansRemaining === 0 && !overageMode;
+
   return (
     <div className="space-y-6">
+      {/* Scan usage bar */}
+      {scanUsage && (
+        <div className="rounded-lg border border-border p-4 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium">{scansUsed}/{scansLimit} scans used this month</span>
+            {resetDateStr && <span className="text-xs text-muted-foreground">Resets {resetDateStr}</span>}
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${usageColor}`} style={{ width: `${usagePercent}%` }} />
+          </div>
+        </div>
+      )}
+
+      {/* Low scan warning */}
+      {scanUsage && scansRemaining > 0 && scansRemaining <= 2 && (
+        <div className="flex items-center gap-2 p-3 rounded-lg border border-orange-200 bg-orange-50 text-sm">
+          <AlertTriangle className="h-4 w-4 text-orange-600 shrink-0" />
+          <p className="text-orange-800">You have {scansRemaining} scan{scansRemaining > 1 ? "s" : ""} left this month.{resetDateStr ? ` Scans reset on ${resetDateStr}.` : ""}</p>
+        </div>
+      )}
+
+      {/* No scans remaining */}
+      {scanUsage && scansRemaining === 0 && !scanResult && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-3">
+          {scanPlan === "free" ? (
+            <UpgradePrompt feature="contract scanning" current={0} limit={0} />
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+                <p className="text-sm text-red-800 font-medium">You've used all {scansLimit} scans this month.</p>
+              </div>
+              <p className="text-xs text-red-700">Pay ${scanUsage.overagePrice} per additional scan or upgrade your plan.</p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  onClick={() => setOverageMode(true)}
+                >
+                  Pay ${scanUsage.overagePrice} to Scan
+                </Button>
+                <Link href="/dashboard?tab=settings">
+                  <Button size="sm" variant="outline">Upgrade Plan</Button>
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Upload / Paste Area */}
       {!scanResult && (
         <Card className="border-border">
@@ -560,12 +655,14 @@ function ScanContractTab() {
             )}
 
             <Button
-              onClick={handleScan}
-              disabled={scanning || (!file && !pastedText.trim())}
+              onClick={() => handleScan(overageMode)}
+              disabled={scanning || (!file && !pastedText.trim()) || scanDisabled}
               className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold"
             >
               {scanning ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analyzing Contract...</>
+              ) : overageMode ? (
+                <><ShieldCheck className="h-4 w-4 mr-2" /> Scan Contract (${scanUsage?.overagePrice || 10} overage)</>
               ) : (
                 <><ShieldCheck className="h-4 w-4 mr-2" /> Scan Contract</>
               )}
