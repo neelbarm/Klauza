@@ -165,6 +165,8 @@ export default function BlogPage() {
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <Link href="/about" className="hover:text-foreground transition-colors">About</Link>
             <Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link>
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
           </div>
         </div>
       </footer>

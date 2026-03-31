@@ -56,7 +56,7 @@ import {
   Scale,
   FileCheck,
 } from "lucide-react";
-import type { Dispute, Client, Contract } from "@shared/schema";
+import type { Dispute, Client, Contract, Invoice } from "@shared/schema";
 import { useUsage } from "@/hooks/use-usage";
 import { UpgradePrompt } from "@/components/upgrade-prompt";
 
@@ -451,6 +451,7 @@ function CreateDisputeWizard({
   const [step, setStep] = useState(1);
 
   // Step 1: What happened
+  const [invoiceId, setInvoiceId] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -487,6 +488,25 @@ function CreateDisputeWizard({
   });
   const [contractId, setContractId] = useState("");
 
+  const { data: invoices } = useQuery<Invoice[]>({
+    queryKey: ["/api/invoices"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/invoices");
+      return res.json();
+    },
+  });
+
+  // Auto-fill from selected invoice
+  const selectedInvoice = invoices?.find(inv => inv.id === Number(invoiceId));
+  useEffect(() => {
+    if (selectedInvoice) {
+      if (selectedInvoice.amount) setAmount((selectedInvoice.amount / 100).toString());
+      if (selectedInvoice.dueDate) setDueDate(selectedInvoice.dueDate);
+      if (selectedInvoice.description) setDescription(selectedInvoice.description);
+      if (selectedInvoice.clientId) setClientId(String(selectedInvoice.clientId));
+    }
+  }, [invoiceId]);
+
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest("POST", "/api/disputes", data);
@@ -503,6 +523,7 @@ function CreateDisputeWizard({
         } catch {}
       }
       queryClient.invalidateQueries({ queryKey: ["/api/disputes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       toast({ title: "Dispute created", description: "Chase process has been initiated." });
       onClose();
@@ -533,6 +554,7 @@ function CreateDisputeWizard({
       defendantAddress,
       defendantBusinessName: defendantBusiness,
       contractId: contractId ? Number(contractId) : null,
+      invoiceId: invoiceId ? Number(invoiceId) : null,
       dueDate: dueDate || null,
       state: state || null,
     });
@@ -574,6 +596,24 @@ function CreateDisputeWizard({
       {/* Step 1: What happened */}
       {step === 1 && (
         <div className="space-y-4">
+          {invoices && invoices.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Link an Invoice (optional)</Label>
+              <Select value={invoiceId} onValueChange={setInvoiceId}>
+                <SelectTrigger data-testid="select-dispute-invoice">
+                  <SelectValue placeholder="Select an invoice to auto-fill details" />
+                </SelectTrigger>
+                <SelectContent>
+                  {invoices.filter(inv => inv.status !== "paid").map((inv) => (
+                    <SelectItem key={inv.id} value={String(inv.id)}>
+                      #{inv.id} — {formatCurrency(inv.amount)}{inv.description ? ` — ${inv.description.slice(0, 40)}` : ""} ({inv.status})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">Selecting an invoice auto-fills amount, due date, and description.</p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label className="text-sm font-medium">What happened? Tell us your story</Label>
             <Textarea

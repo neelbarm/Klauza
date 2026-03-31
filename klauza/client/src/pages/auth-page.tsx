@@ -164,12 +164,13 @@ export default function AuthPage() {
   const [estimatedArr, setEstimatedArr] = useState("");
   const [referralSource, setReferralSource] = useState("");
   const [selectedPlan, setSelectedPlan] = useState("free");
+  const [jurisdiction, setJurisdiction] = useState("US");
 
   const { user, login, register } = useAuth();
   const { toast } = useToast();
 
   const onboardingMutation = useMutation({
-    mutationFn: async (data: { businessName: string; estimatedArr: string; referralSource: string; plan: string }) => {
+    mutationFn: async (data: { businessName: string; estimatedArr: string; referralSource: string; plan: string; jurisdiction: string }) => {
       const res = await apiRequest("POST", "/api/onboarding", data);
       return await res.json();
     },
@@ -190,7 +191,7 @@ export default function AuthPage() {
   if (user && !user.onboardingComplete) {
     const handleStep1Next = (e: React.FormEvent) => {
       e.preventDefault();
-      if (!businessName || !estimatedArr || !referralSource) {
+      if (!businessName || !estimatedArr || !referralSource || !jurisdiction) {
         toast({ title: "Error", description: "Please fill in all fields", variant: "destructive" });
         return;
       }
@@ -199,7 +200,7 @@ export default function AuthPage() {
 
     const handleStep2Submit = (e: React.FormEvent) => {
       e.preventDefault();
-      onboardingMutation.mutate({ businessName, estimatedArr, referralSource, plan: selectedPlan });
+      onboardingMutation.mutate({ businessName, estimatedArr, referralSource, plan: selectedPlan, jurisdiction });
     };
 
     return (
@@ -248,6 +249,25 @@ export default function AuthPage() {
                         {REFERRAL_OPTIONS.map((opt) => (
                           <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="jurisdiction" className="text-sm">Your Country / Jurisdiction</Label>
+                    <Select value={jurisdiction} onValueChange={setJurisdiction}>
+                      <SelectTrigger data-testid="select-jurisdiction">
+                        <SelectValue placeholder="Select your country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="US">United States</SelectItem>
+                        <SelectItem value="UK">United Kingdom</SelectItem>
+                        <SelectItem value="CA">Canada</SelectItem>
+                        <SelectItem value="NG">Nigeria</SelectItem>
+                        <SelectItem value="EU">European Union</SelectItem>
+                        <SelectItem value="AU">Australia</SelectItem>
+                        <SelectItem value="IN">India</SelectItem>
+                        <SelectItem value="ZA">South Africa</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

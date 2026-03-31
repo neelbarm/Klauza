@@ -39,6 +39,99 @@ const COURT_INFO: Record<string, { limit: number; filingFee: string; serviceFee:
   MA: { limit: 7000, filingFee: "$40–$60", serviceFee: "$20–$40", statute: "6 years", lateFeeRate: "12% annually", courtName: "Massachusetts Small Claims Session", filingUrl: "https://www.mass.gov/small-claims", notes: "Part of the District or Boston Municipal Court." },
 };
 
+// Jurisdiction-specific enforcement info by country
+const JURISDICTION_INFO: Record<string, {
+  name: string;
+  demandLetterLaw: string;
+  courtSystem: string;
+  interestRate: string;
+  currencySymbol: string;
+  currencyCode: string;
+  latePaymentRef: string;
+  filingProcess: string;
+}> = {
+  US: {
+    name: "United States",
+    demandLetterLaw: "UCC (Uniform Commercial Code) and state contract law",
+    courtSystem: "Small Claims Court (state-specific limits)",
+    interestRate: "Varies by state (6%–18% annually)",
+    currencySymbol: "$",
+    currencyCode: "USD",
+    latePaymentRef: "state usury laws and UCC §2-709",
+    filingProcess: "File a Statement of Claim at your local small claims court. Filing fees range $15–$300 depending on state and amount.",
+  },
+  UK: {
+    name: "United Kingdom",
+    demandLetterLaw: "Late Payment of Commercial Debts (Interest) Act 1998",
+    courtSystem: "County Court Money Claims Online (MCOL) / Small Claims Track",
+    interestRate: "8% + Bank of England base rate (statutory)",
+    currencySymbol: "£",
+    currencyCode: "GBP",
+    latePaymentRef: "Late Payment of Commercial Debts (Interest) Act 1998, s.1",
+    filingProcess: "Submit claim online via MCOL (gov.uk/money-claims). Claims up to £10,000 use Small Claims Track. Filing fee £35–£455 based on amount.",
+  },
+  CA: {
+    name: "Canada",
+    demandLetterLaw: "Provincial Sale of Goods Acts and common law contract principles",
+    courtSystem: "Small Claims Court (provincial, limits vary $25K–$50K)",
+    interestRate: "Prejudgment interest varies by province (typically 2%–5%)",
+    currencySymbol: "$",
+    currencyCode: "CAD",
+    latePaymentRef: "Courts of Justice Act (ON) / provincial equivalent",
+    filingProcess: "File at your provincial Small Claims Court. Filing fees range $75–$200 CAD depending on province and claim amount.",
+  },
+  NG: {
+    name: "Nigeria",
+    demandLetterLaw: "Nigerian Contract Act and common law principles",
+    courtSystem: "Magistrate Court / Small Claims Court (Lagos: ₦5M limit)",
+    interestRate: "10% per annum (default statutory rate)",
+    currencySymbol: "₦",
+    currencyCode: "NGN",
+    latePaymentRef: "Sheriffs and Civil Process Act, Law of Contract",
+    filingProcess: "File at the Magistrate Court in the defendant's jurisdiction. Lagos Small Claims Court handles claims up to ₦5,000,000 with simplified procedure.",
+  },
+  EU: {
+    name: "European Union",
+    demandLetterLaw: "EU Late Payment Directive 2011/7/EU",
+    courtSystem: "European Small Claims Procedure (Regulation 861/2007, up to €5,000)",
+    interestRate: "ECB reference rate + 8% (statutory minimum under Directive 2011/7/EU)",
+    currencySymbol: "€",
+    currencyCode: "EUR",
+    latePaymentRef: "EU Late Payment Directive 2011/7/EU, Art. 3–4",
+    filingProcess: "Use the European Small Claims Procedure (Form A) for cross-border claims up to €5,000. For domestic claims, use your member state's national small claims process.",
+  },
+  AU: {
+    name: "Australia",
+    demandLetterLaw: "Australian Consumer Law and state/territory Fair Trading Acts",
+    courtSystem: "VCAT / NCAT / QCAT (state tribunals, limits $25K–$100K AUD)",
+    interestRate: "Penalty interest rate set by each state (typically 8%–10%)",
+    currencySymbol: "$",
+    currencyCode: "AUD",
+    latePaymentRef: "Penalty Interest Rates Act (VIC) / Civil Procedure Act equivalent",
+    filingProcess: "File at your state's Civil and Administrative Tribunal (VCAT/NCAT/QCAT). Filing fees range $50–$500 AUD depending on claim amount.",
+  },
+  IN: {
+    name: "India",
+    demandLetterLaw: "Indian Contract Act 1872 and Commercial Courts Act 2015",
+    courtSystem: "District Court / Consumer Forum (up to ₹1 crore at District level)",
+    interestRate: "18% per annum (typical contractual/court-awarded rate)",
+    currencySymbol: "₹",
+    currencyCode: "INR",
+    latePaymentRef: "Indian Contract Act 1872, §73–74 (damages for breach)",
+    filingProcess: "Send legal notice under Section 80 CPC, then file suit at District Court or Consumer Disputes Redressal Forum depending on claim type.",
+  },
+  ZA: {
+    name: "South Africa",
+    demandLetterLaw: "National Credit Act 34 of 2005 and common law (pacta sunt servanda)",
+    courtSystem: "Small Claims Court (up to R20,000) / Magistrate's Court",
+    interestRate: "Prescribed Rate of Interest Act — currently 7.25% per annum",
+    currencySymbol: "R",
+    currencyCode: "ZAR",
+    latePaymentRef: "Prescribed Rate of Interest Act 55 of 1975",
+    filingProcess: "File at Small Claims Court (no attorneys, limit R20,000) or Magistrate's Court for larger amounts. No filing fees for Small Claims Court.",
+  },
+};
+
 // File upload setup
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -164,7 +257,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!checkPlanLimits(req, res, 'disputes')) return;
 
     const { clientId, amount, description, defendantName, defendantEmail, defendantAddress,
-            defendantBusinessName, contractId, dueDate, state } = req.body;
+            defendantBusinessName, contractId, invoiceId, dueDate, state } = req.body;
 
     if (!clientId || !amount) {
       return res.status(400).json({ error: "clientId and amount are required" });
@@ -182,6 +275,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         businessName: defendantBusinessName || "",
       },
       contractId: contractId ? Number(contractId) : null,
+      invoiceId: invoiceId ? Number(invoiceId) : null,
       originalDueDate: dueDate || null,
       state: state || null,
       evidenceFiles: [],
@@ -193,12 +287,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const data = {
       userId: req.user!.id,
       clientId: Number(clientId),
+      invoiceId: invoiceId ? Number(invoiceId) : undefined,
       amount: Number(amount),
       evidence: JSON.stringify(evidenceEnvelope),
     };
     const parsed = insertDisputeSchema.safeParse(data);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
     const dispute = storage.createDispute(parsed.data);
+
+    // Update linked invoice status to "disputed"
+    if (invoiceId) {
+      try {
+        storage.updateInvoice(Number(invoiceId), req.user!.id, { status: "disputed" } as any);
+      } catch {}
+    }
+
     res.status(201).json(dispute);
   });
 
@@ -239,8 +342,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     amount: number,
     clientName: string,
     evidenceData?: ReturnType<typeof parseEvidenceData>,
+    jurisdiction?: string,
   ): { type: string; subject: string; body: string } {
-    const amountStr = `$${(amount / 100).toFixed(2)}`;
+    const jur = jurisdiction && JURISDICTION_INFO[jurisdiction] ? jurisdiction : "US";
+    const jurInfo = JURISDICTION_INFO[jur];
+    const currSym = jurInfo?.currencySymbol || "$";
+    const formatAmount = (cents: number) => `${currSym}${(cents / 100).toFixed(2)}`;
+    const amountStr = formatAmount(amount);
     const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
     const defendant = evidenceData?.defendant;
     const defName = defendant?.name || clientName;
@@ -254,16 +362,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const courtInfo = stateCode ? COURT_INFO[stateCode] : null;
     const story = evidenceData?.story || "";
 
+    // Use jurisdiction-specific interest rate, falling back to state-specific or default
+    const lateFeeRate = courtInfo?.lateFeeRate || jurInfo?.interestRate || "1.5% per month";
+    // Legal reference for late payment
+    const legalRef = jur !== "US"
+      ? jurInfo?.latePaymentRef || "applicable law"
+      : (stateCode ? `${stateCode} state law` : "our contract terms");
+    const lawRef = jur !== "US"
+      ? jurInfo?.demandLetterLaw || "applicable law"
+      : (stateCode ? `the laws of the State of ${stateCode}` : "applicable law");
+    const courtSystemRef = jur !== "US"
+      ? jurInfo?.courtSystem || "the appropriate court"
+      : (courtInfo?.courtName || "Small Claims Court in [YOUR JURISDICTION]");
+
     // Calculate days overdue and late fees
     let daysOverdue = 0;
     if (evidenceData?.originalDueDate) {
       daysOverdue = Math.max(0, Math.floor((Date.now() - new Date(evidenceData.originalDueDate).getTime()) / (1000 * 60 * 60 * 24)));
     }
-    const lateFeeRate = courtInfo?.lateFeeRate || "1.5% per month";
     const dailyRate = parseFloat(lateFeeRate) / 365;
     const lateFeeAmount = Math.round((amount * dailyRate * daysOverdue) / 100);
-    const lateFeeStr = `$${(lateFeeAmount / 100).toFixed(2)}`;
-    const totalWithFees = `$${((amount + lateFeeAmount) / 100).toFixed(2)}`;
+    const lateFeeStr = formatAmount(lateFeeAmount);
+    const totalWithFees = formatAmount(amount + lateFeeAmount);
 
     // Reference to contract if available
     const contractRef = evidenceData?.contractId ? `Contract #${evidenceData.contractId}` : "our agreement";
@@ -313,7 +433,7 @@ Per the terms of ${contractRef}, this payment was due on ${dueDate}. Despite my 
 ${story ? `BACKGROUND:\n${story}\n\n` : ""}Please be advised of the following:
 
 1. The full amount of ${amountStr} is due immediately.
-2. Per ${stateCode ? `${stateCode} state law` : "our contract terms"}, late payments are subject to interest at ${lateFeeRate}.${daysOverdue > 0 ? ` Accrued late fees to date: ${lateFeeStr}. Total now owed: ${totalWithFees}.` : ""}
+2. Per ${legalRef}, late payments are subject to interest at ${lateFeeRate}.${daysOverdue > 0 ? ` Accrued late fees to date: ${lateFeeStr}. Total now owed: ${totalWithFees}.` : ""}
 3. I reserve the right to suspend any ongoing or future work until this balance is resolved.
 4. I retain all intellectual property rights to the delivered work until full payment is received.
 
@@ -336,7 +456,7 @@ Reference: ${contractRef}`,
     }
 
     if (stage === 4) {
-      const courtName = courtInfo?.courtName || "Small Claims Court in [YOUR JURISDICTION]";
+      const courtName = courtInfo?.courtName || courtSystemRef;
       const filingUrl = courtInfo?.filingUrl || "";
       const courtLimit = courtInfo?.limit || 10000;
 
@@ -374,7 +494,7 @@ AMOUNT OWED:
   ─────────────────────────────
   TOTAL DUE:               ${totalWithFees}
 
-Late fees continue to accrue at ${lateFeeRate} per ${stateCode ? `${stateCode} state law` : "the terms of our agreement"}.
+Late fees continue to accrue at ${lateFeeRate} per ${legalRef}.
 
 DEMAND:
 I hereby demand full payment of ${totalWithFees} within ten (10) calendar days of your receipt of this letter. Payment should be directed to [YOUR PAYMENT DETAILS].
@@ -382,7 +502,7 @@ I hereby demand full payment of ${totalWithFees} within ten (10) calendar days o
 CONSEQUENCES OF NON-PAYMENT:
 If I do not receive full payment by the deadline stated above, I intend to pursue all available legal remedies without further notice, including but not limited to:
 
-  1. Filing a claim in ${courtName}${amount / 100 <= courtLimit ? ` (your debt of ${amountStr} is within the ${stateCode || "state"} limit of $${courtLimit.toLocaleString()})` : ""}
+  1. Filing a claim in ${courtName}${amount / 100 <= courtLimit ? ` (your debt of ${amountStr} is within the ${stateCode || jur} limit of ${currSym}${courtLimit.toLocaleString()})` : ""}
   2. Reporting the outstanding debt to business credit bureaus (Dun & Bradstreet, Experian Business)
   3. Engaging a licensed collections agency
   4. Seeking recovery of the full amount plus court filing fees, service costs, interest, and any attorney's fees as permitted by law
@@ -394,7 +514,7 @@ ${evidenceSummary}
 
 I strongly urge you to treat this matter with the urgency it deserves. I remain open to discussing a reasonable payment arrangement if you contact me within five (5) business days.
 
-This letter is written without prejudice to any and all rights and remedies available to me under ${stateCode ? `the laws of the State of ${stateCode}` : "applicable law"} and ${contractRef}, all of which are expressly reserved.
+This letter is written without prejudice to any and all rights and remedies available to me under ${lawRef} and ${contractRef}, all of which are expressly reserved.
 
 Govern yourself accordingly.
 
@@ -404,7 +524,7 @@ ____________________________
 [YOUR NAME]
 [YOUR EMAIL]
 [YOUR PHONE]
-${stateCode ? `\nJurisdiction: State of ${stateCode}` : ""}
+${stateCode ? `\nJurisdiction: State of ${stateCode}` : (jur !== "US" ? `\nJurisdiction: ${jurInfo?.name || jur}` : "")}
 
 ---
 IMPORTANT: Keep a copy of this letter for your records.
@@ -415,34 +535,35 @@ This notice satisfies the pre-suit demand requirement in most jurisdictions.`,
     }
 
     // Small Claims Prep (shown at stage 4 alongside demand letter)
-    const courtName = courtInfo?.courtName || "your local Small Claims Court";
-    const filingFee = courtInfo?.filingFee || "$30–$100";
-    const serviceFee = courtInfo?.serviceFee || "$20–$75";
+    const courtName = courtInfo?.courtName || courtSystemRef;
+    const filingFee = courtInfo?.filingFee || (jur !== "US" ? "varies" : "$30–$100");
+    const serviceFee = courtInfo?.serviceFee || (jur !== "US" ? "varies" : "$20–$75");
     const statute = courtInfo?.statute || "typically 2-6 years for contract claims";
     const courtLimit = courtInfo?.limit || 10000;
     const courtNotes = courtInfo?.notes || "";
     const filingUrl = courtInfo?.filingUrl || "[your local court website]";
+    const jurisdictionLabel = stateCode ? `State of ${stateCode}` : (jur !== "US" ? (jurInfo?.name || jur) : "Your State");
 
     return {
       type: "checklist",
-      subject: `Small Claims Court Preparation — ${stateCode || "Your State"}`,
-      body: `SMALL CLAIMS COURT PREPARATION CHECKLIST
+      subject: `Court Preparation — ${jurisdictionLabel}`,
+      body: `COURT PREPARATION CHECKLIST
 ${"=".repeat(50)}
 
 Plaintiff: [YOUR NAME]
 Defendant: ${defName}${defBusiness ? ` (d/b/a ${defBusiness})` : ""}
 Defendant Address: ${defAddress && defAddress !== "[DEFENDANT ADDRESS]" ? defAddress : "[VERIFY ADDRESS BEFORE FILING]"}
 Dispute Amount: ${amountStr} (+ ${lateFeeStr} in late fees = ${totalWithFees})
-${stateCode ? `Jurisdiction: State of ${stateCode}` : ""}
-${stateCode ? `Court: ${courtName}` : ""}
-Date Prepared: ${today}
+Jurisdiction: ${jurisdictionLabel}
+Court: ${courtName}
+${jur !== "US" ? `Applicable Law: ${jurInfo?.demandLetterLaw || "N/A"}\nFiling Process: ${jurInfo?.filingProcess || "N/A"}\n` : ""}Date Prepared: ${today}
 
 ${stateCode ? `STATE-SPECIFIC INFO (${stateCode}):\n${courtNotes}\n` : ""}
 BEFORE YOU FILE:
-[${amount / 100 <= courtLimit ? "x" : " "}] Amount (${amountStr}) is within ${stateCode || "your state"}'s small claims limit ($${courtLimit.toLocaleString()})
+[${amount / 100 <= courtLimit ? "x" : " "}] Amount (${amountStr}) is within the ${jurisdictionLabel} limit (${currSym}${courtLimit.toLocaleString()})
 [ ] Verified the correct legal name and address of ${defName}${defBusiness ? ` / ${defBusiness}` : ""}
-[ ] Confirmed statute of limitations has not expired (${stateCode || "your state"}: ${statute})
-[ ] Sent formal demand letter with proof of delivery (required in most states)
+[ ] Confirmed statute of limitations has not expired (${jurisdictionLabel}: ${statute})
+[ ] Sent formal demand letter with proof of delivery
 
 DOCUMENTS TO GATHER:
 [ ] Original signed contract or agreement${evidenceData?.contractId ? ` (Contract #${evidenceData.contractId})` : ""}
@@ -506,8 +627,9 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     // Build escalation history
     const evidenceData = parseEvidenceData(dispute.evidence);
 
-    // Generate the escalation text with full context
-    const escalation = generateEscalationText(nextStage, dispute.amount, clientName, evidenceData);
+    // Generate the escalation text with full context and user jurisdiction
+    const userJurisdiction = (req.user as any)?.jurisdiction || "US";
+    const escalation = generateEscalationText(nextStage, dispute.amount, clientName, evidenceData, userJurisdiction);
     evidenceData.escalations.push({
       stage: nextStage,
       type: escalation.type,
@@ -631,9 +753,32 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     res.json(updated);
   });
 
-  // Court info by state
+  // Court info by state (US) or jurisdiction (non-US)
   app.get("/api/court-info/:state", (req, res) => {
     const state = req.params.state.toUpperCase();
+    const jurisdiction = (req.query.jurisdiction as string || "").toUpperCase();
+
+    // If jurisdiction is non-US, return jurisdiction-level court info
+    if (jurisdiction && jurisdiction !== "US" && JURISDICTION_INFO[jurisdiction]) {
+      const jurInfo = JURISDICTION_INFO[jurisdiction];
+      return res.json({
+        state: jurisdiction,
+        country: jurInfo.name,
+        limit: 0,
+        filingFee: "varies",
+        serviceFee: "varies",
+        statute: "varies by jurisdiction",
+        lateFeeRate: jurInfo.interestRate,
+        courtName: jurInfo.courtSystem,
+        filingUrl: "",
+        notes: jurInfo.filingProcess,
+        currencySymbol: jurInfo.currencySymbol,
+        demandLetterLaw: jurInfo.demandLetterLaw,
+        latePaymentRef: jurInfo.latePaymentRef,
+      });
+    }
+
+    // Default: US state lookup
     const info = COURT_INFO[state];
     if (!info) return res.status(404).json({ error: "No court info available for this state" });
     res.json({ state, ...info });
@@ -710,7 +855,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   // ==================== ONBOARDING ====================
   app.post("/api/onboarding", (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const { businessName, estimatedArr, referralSource, plan } = req.body;
+    const { businessName, estimatedArr, referralSource, plan, jurisdiction } = req.body;
 
     if (!businessName || !estimatedArr || !referralSource || !plan) {
       return res.status(400).json({ error: "All fields required" });
@@ -719,11 +864,15 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     const validPlans = ['free', 'pro', 'enterprise'];
     if (!validPlans.includes(plan)) return res.status(400).json({ error: "Invalid plan" });
 
+    const validJurisdictions = ['US', 'UK', 'CA', 'NG', 'EU', 'AU', 'IN', 'ZA', 'OTHER'];
+    const userJurisdiction = jurisdiction && validJurisdictions.includes(jurisdiction) ? jurisdiction : 'US';
+
     const updated = storage.updateUserProfile(req.user!.id, {
       businessName,
       estimatedArr,
       referralSource,
       plan,
+      jurisdiction: userJurisdiction,
       onboardingComplete: 1,
     });
 

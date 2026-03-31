@@ -143,6 +143,11 @@ export default function BlogPostPage() {
             <span className="font-display text-xs tracking-[0.2em]">KLAUZA</span>
           </div>
           <p className="text-xs text-muted-foreground">© 2026 Klauza. All rights reserved.</p>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+            <Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link>
+          </div>
         </div>
       </footer>
     </div>

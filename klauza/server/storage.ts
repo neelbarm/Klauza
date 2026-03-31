@@ -107,6 +107,7 @@ try { sqlite.exec("ALTER TABLE users ADD COLUMN business_name TEXT"); } catch(e)
 try { sqlite.exec("ALTER TABLE users ADD COLUMN estimated_arr TEXT"); } catch(e) {}
 try { sqlite.exec("ALTER TABLE users ADD COLUMN referral_source TEXT"); } catch(e) {}
 try { sqlite.exec("ALTER TABLE users ADD COLUMN onboarding_complete INTEGER DEFAULT 0"); } catch(e) {}
+try { sqlite.exec("ALTER TABLE users ADD COLUMN jurisdiction TEXT DEFAULT 'US'"); } catch(e) {}
 
 export const db = drizzle(sqlite);
 

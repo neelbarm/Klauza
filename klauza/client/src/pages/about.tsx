@@ -161,6 +161,8 @@ export default function AboutPage() {
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <Link href="/blog" className="hover:text-foreground transition-colors">Blog</Link>
             <Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link>
+            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
           </div>
         </div>
       </footer>

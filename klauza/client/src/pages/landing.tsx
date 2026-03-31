@@ -461,10 +461,10 @@ function Footer() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider mb-3">Product</p>
           <ul className="space-y-2 text-xs text-muted-foreground">
-            <li>Contract Scanner</li>
-            <li>Client CRM</li>
-            <li>Invoice Engine</li>
-            <li>Chase Engine</li>
+            <li><Link href="/auth" className="hover:text-foreground transition-colors">Contract Scanner</Link></li>
+            <li><Link href="/auth" className="hover:text-foreground transition-colors">Client CRM</Link></li>
+            <li><Link href="/auth" className="hover:text-foreground transition-colors">Invoice Engine</Link></li>
+            <li><Link href="/auth" className="hover:text-foreground transition-colors">Chase Engine</Link></li>
           </ul>
         </div>
         <div>
@@ -472,16 +472,16 @@ function Footer() {
           <ul className="space-y-2 text-xs text-muted-foreground">
             <li><Link href="/about" className="hover:text-foreground transition-colors">About</Link></li>
             <li><Link href="/blog" className="hover:text-foreground transition-colors">Blog</Link></li>
-            <li>Careers</li>
+            <li><Link href="/careers" className="hover:text-foreground transition-colors">Careers</Link></li>
             <li><Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link></li>
           </ul>
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider mb-3">Legal</p>
           <ul className="space-y-2 text-xs text-muted-foreground">
-            <li>Privacy Policy</li>
-            <li>Terms of Service</li>
-            <li>Cookie Policy</li>
+            <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
+            <li><Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
+            <li><Link href="/cookies" className="hover:text-foreground transition-colors">Cookie Policy</Link></li>
           </ul>
         </div>
       </div>
