@@ -18,7 +18,7 @@ import path from "path";
 import fs from "fs";
 import { scanContract, generateProtectiveContract, parseInvoice } from "./ai-scanner";
 
-const FREE_LIMITS = { contracts: 1, invoices: 1, clients: 2, disputes: 1 };
+const FREE_LIMITS = { contracts: 1, invoices: 1, clients: 2, disputes: 0 };
 
 // File upload setup
 const uploadDir = path.join(process.cwd(), "uploads");

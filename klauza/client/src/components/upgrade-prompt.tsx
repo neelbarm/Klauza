@@ -22,10 +22,12 @@ export function UpgradePrompt({ feature, current, limit }: { feature: string; cu
         <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-3">
           <Lock className="h-6 w-6 text-primary" />
         </div>
-        <CardTitle className="text-lg">Free Plan Limit Reached</CardTitle>
+        <CardTitle className="text-lg">{limit === 0 ? "Pro Feature" : "Free Plan Limit Reached"}</CardTitle>
         <CardDescription>
-          You've used {current} of {limit} {feature} on the free plan.
-          Upgrade to Pro for unlimited access.
+          {limit === 0
+            ? `The ${feature} feature is only available on the Pro plan. Upgrade to unlock it.`
+            : `You've used ${current} of ${limit} ${feature} on the free plan. Upgrade to Pro for unlimited access.`
+          }
         </CardDescription>
       </CardHeader>
       <CardContent className="text-center">

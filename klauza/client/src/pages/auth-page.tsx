@@ -29,7 +29,6 @@ const PLANS = [
       "1 contract scan",
       "2 clients",
       "1 invoice",
-      "1 dispute",
       "Basic dashboard",
     ],
   },

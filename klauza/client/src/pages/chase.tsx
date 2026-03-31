@@ -678,6 +678,21 @@ export default function ChasePage() {
     return clients?.find((c) => c.id === clientId)?.name || "Unknown Client";
   };
 
+  // Gate: free users cannot access Chase at all
+  if (usageData?.plan === 'free') {
+    return (
+      <div className="p-6 max-w-7xl mx-auto" data-testid="chase-page">
+        <div className="mb-6">
+          <h1 className="text-xl font-semibold">Chase</h1>
+          <p className="text-sm text-muted-foreground">Enforce payments and manage disputes</p>
+        </div>
+        <div className="max-w-lg mx-auto mt-12">
+          <UpgradePrompt feature="disputes" current={0} limit={0} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto" data-testid="chase-page">
       <div className="flex items-center justify-between mb-6">
