@@ -10,11 +10,14 @@ import {
   Search,
   Zap,
   Clock,
-  Quote,
   Eye,
   FileCheck,
   Scale,
-  UserCheck,
+  X,
+  DollarSign,
+  FileWarning,
+  Package,
+  ChevronRight,
 } from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════
@@ -31,6 +34,12 @@ function Navbar() {
           <span className="font-display text-sm tracking-[0.3em] text-foreground">K L A U Z A</span>
         </div>
         <div className="hidden md:flex items-center gap-8">
+          <button
+            onClick={() => document.getElementById('product')?.scrollIntoView({ behavior: 'smooth' })}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Product
+          </button>
           <button
             onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -49,17 +58,14 @@ function Navbar() {
           >
             Pricing
           </button>
-          <Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            About
-          </Link>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            Log In
+            Sign In
           </Link>
           <Link href="/auth">
-            <Button className="rounded-full bg-foreground text-background hover:bg-foreground/90 text-sm px-5 h-9">
-              Get Protected
+            <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm px-5 h-9">
+              Scan a Contract
             </Button>
           </Link>
         </div>
@@ -69,23 +75,23 @@ function Navbar() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 1. HERO — Protection-first positioning
+// 1. HERO — Prevent + Recover
 // ═══════════════════════════════════════════════════════════
 function HeroSection() {
   return (
     <section className="pt-28 pb-16 px-6">
-      <div className="max-w-4xl mx-auto text-center">
+      <div className="max-w-5xl mx-auto text-center">
         <p className="text-xs font-display tracking-[0.3em] text-primary uppercase mb-6">
-          Protection for experienced freelancers
+          Freelancer protection infrastructure
         </p>
 
-        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] uppercase leading-[1.12] tracking-tight max-w-2xl mx-auto">
-          Stronger contracts.{" "}
-          <span className="text-primary">Faster payments.</span>
+        <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] uppercase leading-[1.12] tracking-tight max-w-3xl mx-auto">
+          Scan before signing.{" "}
+          <span className="text-primary">Chase when they stall.</span>
         </h1>
 
-        <p className="mt-6 text-muted-foreground text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
-          Klauza AI scans your contracts for risk, strengthens your terms, and chases overdue invoices when clients stop paying.
+        <p className="mt-6 text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+          Klauza helps freelancers flag risky contract clauses, strengthen agreements, recover overdue payments, and organize disputes before legal escalation.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
@@ -95,138 +101,133 @@ function HeroSection() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
-          <Button
-            variant="outline"
-            className="rounded-full px-8 h-12 text-sm border-border"
-            onClick={() => document.getElementById('chase')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            See Payment Chase Workflow
-          </Button>
+          <Link href="/auth">
+            <Button
+              variant="outline"
+              className="rounded-full px-8 h-12 text-sm border-border"
+            >
+              Start a Dispute
+            </Button>
+          </Link>
         </div>
 
-        {/* Mock scan result preview */}
-        <div className="mt-12 max-w-md mx-auto p-4 rounded-lg border border-border bg-card text-left">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-red-500" />
-            <p className="text-xs font-medium text-red-600">3 risks found</p>
-            <div className="w-2 h-2 rounded-full bg-yellow-500 ml-2" />
-            <p className="text-xs font-medium text-yellow-600">2 missing protections</p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-start gap-2">
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium shrink-0">HIGH</span>
-              <p className="text-xs text-muted-foreground">No kill fee clause — client can cancel without compensation</p>
+        {/* Hero proof bullets */}
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+          {[
+            "Flag risky clauses fast",
+            "Build stronger freelancer protection",
+            "Chase overdue payments",
+            "Organize dispute evidence clearly",
+          ].map((b) => (
+            <div key={b} className="flex items-center gap-2">
+              <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="text-sm text-muted-foreground">{b}</span>
             </div>
-            <div className="flex items-start gap-2">
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium shrink-0">HIGH</span>
-              <p className="text-xs text-muted-foreground">Payment terms missing — no defined due date or late penalties</p>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium shrink-0">MED</span>
-              <p className="text-xs text-muted-foreground">IP ownership clause is vague — rights transfer ambiguous</p>
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Safety Score</p>
-            <p className="text-sm font-bold text-red-600">28/100</p>
-          </div>
+          ))}
         </div>
-      </div>
-    </section>
-  );
-}
 
-// ═══════════════════════════════════════════════════════════
-// 2. PROOF BAR — 3 benefit statements
-// ═══════════════════════════════════════════════════════════
-function ProofBar() {
-  const items = [
-    { icon: Eye, text: "Catch risky clauses before you sign" },
-    { icon: Shield, text: "Build stronger payment protection" },
-    { icon: Zap, text: "Handle overdue invoices with confidence" },
-  ];
-
-  return (
-    <section className="py-10 border-y border-border bg-card">
-      <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 px-6">
-        {items.map((item) => (
-          <div key={item.text} className="flex items-center gap-2.5">
-            <item.icon className="h-4 w-4 text-primary shrink-0" />
-            <p className="text-sm text-foreground font-medium">{item.text}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════
-// 2b. PROOF EXAMPLE — real scan result callout
-// ═══════════════════════════════════════════════════════════
-function ProofExample() {
-  return (
-    <div className="py-8 px-6">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-4 p-4 rounded-lg border border-primary/20 bg-primary/5">
-          <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium">Real scan result: Flagged a missing $2,400 kill fee clause</p>
-            <p className="text-xs text-muted-foreground mt-0.5">One scan. One fix. $2,400 protected.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════
-// 3. HOW IT WORKS — 3-step protection flow
-// ═══════════════════════════════════════════════════════════
-function HowItWorks() {
-  const steps = [
-    {
-      num: "01",
-      title: "Upload your contract",
-      desc: "Drop in any agreement you've been sent. Trained AI scans it across 17 risk categories and flags exactly what needs fixing.",
-      icon: Search,
-    },
-    {
-      num: "02",
-      title: "Strengthen the terms",
-      desc: "Klauza AI generates specific clause suggestions for kill fees, payment terms, IP protection, and scope boundaries. Copy, paste, send.",
-      icon: FileCheck,
-    },
-    {
-      num: "03",
-      title: "Stay ready if they stall",
-      desc: "If a client goes dark, Klauza AI generates escalating enforcement — from friendly reminder to formal demand letter to court prep.",
-      icon: Zap,
-    },
-  ];
-
-  return (
-    <section className="py-20 px-6" id="how-it-works">
-      <div className="max-w-5xl mx-auto text-center">
-        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">How It Works</p>
-        <h2 className="font-display text-2xl sm:text-3xl uppercase mb-4 leading-tight">
-          Before you sign.{" "}
-          <span className="text-primary">After they stall.</span>
-        </h2>
-        <p className="text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
-          Klauza covers the two moments that actually cost freelancers money: signing weak terms, and chasing clients who won't pay.
-        </p>
-
-        <div className="grid md:grid-cols-3 gap-8 text-center">
-          {steps.map((step) => (
-            <div key={step.num} className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
-                <step.icon className="h-5 w-5 text-primary" />
+        {/* Hero product visual — dual panel */}
+        <div className="mt-12 max-w-2xl mx-auto grid sm:grid-cols-2 gap-3">
+          {/* Left: Contract scan result */}
+          <div className="p-4 rounded-lg border border-border bg-card text-left">
+            <div className="flex items-center gap-2 mb-3">
+              <Search className="h-3.5 w-3.5 text-primary" />
+              <p className="text-xs font-medium">Contract Analysis</p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium shrink-0">CRITICAL</span>
+                <p className="text-xs text-muted-foreground">No kill fee — client can cancel without compensation</p>
               </div>
-              <span className="font-display text-[10px] text-primary/40 tracking-widest mb-2">{step.num}</span>
-              <h3 className="font-semibold text-sm mb-2">{step.title}</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">{step.desc}</p>
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium shrink-0">HIGH</span>
+                <p className="text-xs text-muted-foreground">Payment upon completion only — no deposits or milestones</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium shrink-0">MED</span>
+                <p className="text-xs text-muted-foreground">IP transfers immediately — not tied to payment</p>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Safety Score</p>
+              <p className="text-sm font-bold text-red-600">28/100</p>
+            </div>
+          </div>
+
+          {/* Right: Dispute chase status */}
+          <div className="p-4 rounded-lg border border-border bg-card text-left">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="h-3.5 w-3.5 text-primary" />
+              <p className="text-xs font-medium">Dispute Chase</p>
+            </div>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                  <Check className="h-3 w-3 text-green-600" />
+                </div>
+                <p className="text-xs text-muted-foreground">Friendly reminder sent</p>
+                <span className="text-[10px] text-muted-foreground/50 ml-auto">Day 1</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                  <Check className="h-3 w-3 text-green-600" />
+                </div>
+                <p className="text-xs text-muted-foreground">Formal notice with late fees</p>
+                <span className="text-[10px] text-muted-foreground/50 ml-auto">Day 14</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center">
+                  <Clock className="h-3 w-3 text-orange-600" />
+                </div>
+                <p className="text-xs font-medium">Demand letter generated</p>
+                <span className="text-[10px] text-muted-foreground/50 ml-auto">Day 30</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                  <span className="text-[9px] text-muted-foreground">4</span>
+                </div>
+                <p className="text-xs text-muted-foreground/50">Court prep ready if needed</p>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">$4,800 overdue</p>
+              <p className="text-xs font-medium text-orange-600">37 days</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 2. COST OF THE PROBLEM
+// ═══════════════════════════════════════════════════════════
+function CostOfProblem() {
+  const costs = [
+    { text: "Vague contract terms create avoidable disputes that drain your time and leverage." },
+    { text: "Missing payment protections leave you exposed when a client decides not to pay." },
+    { text: "Chasing late invoices manually is slow, awkward, and easy to deprioritize." },
+    { text: "Scattered evidence makes escalation harder when you finally need to act." },
+    { text: "Lawyers are expensive — especially if you show up unprepared." },
+  ];
+
+  return (
+    <section className="py-20 px-6" style={{ backgroundColor: '#141412' }}>
+      <div className="max-w-3xl mx-auto text-center">
+        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">The Real Cost</p>
+        <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight text-white mb-4">
+          Weak contracts and late payments{" "}
+          <span className="text-primary">cost freelancers real money.</span>
+        </h2>
+        <p className="text-sm text-white/40 mb-10 max-w-xl mx-auto">
+          Most freelancers don't lose money because of bad work. They lose it because of bad terms, slow enforcement, and no system for what happens when a client stops paying.
+        </p>
+        <div className="max-w-xl mx-auto space-y-3 text-left">
+          {costs.map((c, i) => (
+            <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-white/5" style={{ backgroundColor: '#1e1d1a' }}>
+              <AlertTriangle className="h-4 w-4 text-orange-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-white/60 leading-relaxed">{c.text}</p>
             </div>
           ))}
         </div>
@@ -236,54 +237,245 @@ function HowItWorks() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 4. CORE OUTCOMES — Features framed as protection outcomes
+// 3. TWO MOMENTS FREELANCERS GET BURNED
 // ═══════════════════════════════════════════════════════════
-function OutcomesSection() {
-  const outcomes = [
+function TwoMoments() {
+  const beforeSigning = [
+    "Vague scope that invites scope creep",
+    "Weak payment terms with no deposit requirement",
+    "Missing kill fee if the client cancels",
+    "Bad termination language with no notice period",
+    "IP ownership that transfers before you're paid",
+  ];
+
+  const afterDelivery = [
+    "Invoices go past due with no enforcement path",
+    "Client goes silent — no response to follow-ups",
+    "Repeated reminders that feel awkward and get ignored",
+    "No structured escalation workflow to follow",
+    "Legal next steps that feel expensive and overwhelming",
+  ];
+
+  return (
+    <section className="py-20 px-6">
+      <div className="max-w-5xl mx-auto text-center">
+        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Where It Breaks Down</p>
+        <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight mb-4">
+          Two moments{" "}
+          <span className="text-primary">freelancers get burned.</span>
+        </h2>
+        <p className="text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
+          The risk isn't bad clients. It's signing without reviewing and having no system when payment breaks down.
+        </p>
+
+        <div className="grid md:grid-cols-2 gap-4 text-left max-w-3xl mx-auto">
+          {/* Before signing */}
+          <div className="p-6 rounded-lg border border-border bg-card">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                <FileWarning className="h-4 w-4 text-red-600" />
+              </div>
+              <h3 className="font-display text-xs uppercase tracking-wider">Before Signing</h3>
+            </div>
+            <ul className="space-y-2.5">
+              {beforeSigning.map((item) => (
+                <li key={item} className="flex items-start gap-2.5">
+                  <X className="h-3.5 w-3.5 text-red-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground leading-relaxed">{item}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* After delivery */}
+          <div className="p-6 rounded-lg border border-border bg-card">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-orange-600" />
+              </div>
+              <h3 className="font-display text-xs uppercase tracking-wider">After Delivery</h3>
+            </div>
+            <ul className="space-y-2.5">
+              {afterDelivery.map((item) => (
+                <li key={item} className="flex items-start gap-2.5">
+                  <X className="h-3.5 w-3.5 text-orange-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground leading-relaxed">{item}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 4. HOW KLAUZA WORKS — Three steps
+// ═══════════════════════════════════════════════════════════
+function HowItWorks() {
+  const steps = [
+    {
+      num: "01",
+      title: "Scan the contract before work begins",
+      desc: "Upload any agreement. Klauza AI scans it across 17 risk categories and flags exactly what needs fixing — weak payment terms, missing kill fees, vague scope, IP traps.",
+      icon: Search,
+    },
+    {
+      num: "02",
+      title: "Chase and structure the dispute",
+      desc: "If a client goes past due, Klauza generates escalating follow-ups — from a professional reminder to a formal demand letter citing your contract terms and jurisdiction-specific law.",
+      icon: Zap,
+    },
+    {
+      num: "03",
+      title: "Escalate with a lawyer-ready case file",
+      desc: "Invoices, contracts, email records, timeline, and calculated damages — organized into one clean file so you show up prepared if legal escalation becomes necessary.",
+      icon: Package,
+    },
+  ];
+
+  return (
+    <section className="py-20 px-6 bg-card" id="how-it-works">
+      <div className="max-w-5xl mx-auto text-center">
+        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">How It Works</p>
+        <h2 className="font-display text-2xl sm:text-3xl uppercase mb-4 leading-tight">
+          Scan. Chase.{" "}
+          <span className="text-primary">Escalate if needed.</span>
+        </h2>
+        <p className="text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
+          Three steps that cover the two moments freelancers actually lose money: signing weak terms, and having no system when a client stops paying.
+        </p>
+
+        <div className="grid md:grid-cols-3 gap-6 text-center">
+          {steps.map((step) => (
+            <div key={step.num} className="flex flex-col items-center p-6 rounded-lg border border-border bg-background">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                <step.icon className="h-5 w-5 text-primary" />
+              </div>
+              <span className="font-display text-[10px] text-primary/40 tracking-widest mb-2">{step.num}</span>
+              <h3 className="font-semibold text-sm mb-2">{step.title}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{step.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 5. CORE FEATURES — 4 cards
+// ═══════════════════════════════════════════════════════════
+function CoreFeatures() {
+  const features = [
     {
       icon: Search,
-      title: "AI-Powered Contract Analysis",
-      desc: "Klauza AI reads every clause and scores your contract across 17 risk categories — catching missing kill fees, weak payment terms, vague IP clauses, and scope gaps that cost freelancers thousands.",
+      title: "Contract Risk Scanner",
+      desc: "Upload a contract and flag risky clauses before they cost you money. Klauza AI analyzes 17 categories — payment terms, kill fees, IP ownership, scope boundaries, termination language, and more.",
     },
     {
       icon: FileText,
-      title: "AI-Generated Protective Contracts",
-      desc: "Describe your project and Klauza AI writes a complete freelance agreement with built-in protection — kill fees, IP transfer on payment, late penalties, scope boundaries, and jurisdiction-aware legal language.",
+      title: "Freelancer Contract Builder",
+      desc: "Create stronger contracts with better payment, scope, and termination protection. Every agreement includes built-in kill fees, IP transfer on payment, late penalties, and jurisdiction-aware language.",
     },
     {
       icon: Zap,
-      title: "AI-Driven Dispute Automation",
-      desc: "When a client stops paying, Klauza AI generates escalating enforcement letters that reference your specific contract terms, calculate late fees, and cite applicable law for your jurisdiction.",
+      title: "Dispute Chase Engine",
+      desc: "Generate escalation emails, structured follow-ups, and next-step guidance for overdue invoices. Four stages — friendly reminder, formal notice, demand letter, court preparation.",
     },
     {
-      icon: UserCheck,
-      title: "Client Record & Risk Scoring",
-      desc: "Track every client with risk scores, payment history, contracts, and invoices in one place. When a dispute escalates, all your evidence is organized and ready.",
+      icon: Package,
+      title: "Evidence & Escalation Pack",
+      desc: "Turn invoices, contracts, email records, screenshots, and timeline into one organized dispute file. If you need a lawyer, you show up with everything ready.",
     },
   ];
 
   return (
     <section className="py-20 px-6" id="protection" style={{ backgroundColor: '#141412' }}>
       <div className="max-w-6xl mx-auto text-center">
-        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Trained AI, Working for You</p>
+        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Core Protection</p>
         <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight text-white mb-4">
-          Protection powered by{" "}
-          <span className="text-primary">Klauza AI.</span>
+          Contract analysis.{" "}
+          <span className="text-primary">Payment recovery.</span>
         </h2>
-        <p className="text-sm text-white/50 mb-12 max-w-xl mx-auto">
-          Every contract is analyzed by Klauza AI. Every protective agreement is drafted by Klauza AI. Every demand letter is generated by Klauza AI. You stay in control.
+        <p className="text-sm text-white/40 mb-12 max-w-xl mx-auto">
+          Four tools that cover the full lifecycle of freelancer risk — from the contract you sign to the payment you collect.
+        </p>
+
+        <div className="grid sm:grid-cols-2 gap-4 text-left">
+          {features.map((f) => (
+            <div
+              key={f.title}
+              className="p-5 sm:p-6 rounded-lg border border-white/10"
+              style={{ backgroundColor: '#1e1d1a' }}
+            >
+              <f.icon className="h-5 w-5 text-primary mb-3" />
+              <h3 className="font-medium text-white text-sm mb-2">{f.title}</h3>
+              <p className="text-xs text-white/50 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 5b. PRODUCT SECTION ID ANCHOR
+// ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+// 6. SAMPLE OUTCOMES — Workflow examples (not fake testimonials)
+// ═══════════════════════════════════════════════════════════
+function SampleOutcomes() {
+  const outcomes = [
+    {
+      icon: Eye,
+      outcome: "Flagged a vague termination clause before signing",
+      detail: "The original contract allowed the client to terminate immediately without paying for completed work. Klauza AI caught it and suggested a 14-day notice period with pro-rated payment.",
+    },
+    {
+      icon: AlertTriangle,
+      outcome: "Caught a missing kill fee before work started",
+      detail: "No cancellation protection on a $6,000 project. The scan recommended a sliding kill fee — 25% if canceled before start, 50% after work begins, 100% after delivery.",
+    },
+    {
+      icon: Clock,
+      outcome: "Structured a 37-day overdue invoice chase",
+      detail: "Friendly reminder on day 7. Formal notice with late fees on day 14. AI-generated demand letter citing contract terms and state law on day 30. Client paid on day 37.",
+    },
+    {
+      icon: Package,
+      outcome: "Turned scattered documents into a lawyer-ready package",
+      detail: "Invoices, signed contract, email thread, payment timeline, and calculated damages — organized into one file. The attorney said it was the most prepared client they'd seen.",
+    },
+  ];
+
+  return (
+    <section className="py-20 px-6 bg-card" id="product">
+      <div className="max-w-5xl mx-auto text-center">
+        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Example Outcomes</p>
+        <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight mb-4">
+          What Klauza catches.{" "}
+          <span className="text-primary">What Klauza recovers.</span>
+        </h2>
+        <p className="text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
+          Sample workflows showing how Klauza protects freelancers before and after signing.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 text-left">
           {outcomes.map((o) => (
-            <div
-              key={o.title}
-              className="p-5 sm:p-6 rounded-lg border border-white/10"
-              style={{ backgroundColor: '#1e1d1a' }}
-            >
-              <o.icon className="h-5 w-5 text-primary mb-3" />
-              <h3 className="font-medium text-white text-sm mb-2">{o.title}</h3>
-              <p className="text-xs text-white/50 leading-relaxed">{o.desc}</p>
+            <div key={o.outcome} className="p-5 rounded-lg border border-border bg-background">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <o.icon className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium mb-1.5">{o.outcome}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{o.detail}</p>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -293,81 +485,29 @@ function OutcomesSection() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 5. CHASE DETAIL — Payment enforcement expanded
+// 7. DIFFERENTIATION
 // ═══════════════════════════════════════════════════════════
-function ChaseSection() {
-  const stages = [
-    { label: "Friendly Reminder", desc: "Professional nudge referencing your agreement and the overdue amount." },
-    { label: "Formal Notice", desc: "Firm notice citing contract terms and applicable law for your jurisdiction." },
-    { label: "Demand Letter", desc: "Full legal-style demand with late fees, evidence summary, and a deadline." },
-    { label: "Court Preparation", desc: "Filing checklist, case summary, and state-specific court information." },
+function DifferentiationSection() {
+  const comparisons = [
+    { label: "Templates", desc: "Help you start work", muted: true },
+    { label: "Invoicing tools", desc: "Help you send bills", muted: true },
+    { label: "Klauza", desc: "Helps you avoid bad contracts and recover leverage when payment breaks down", muted: false },
   ];
 
   return (
-    <section className="py-20 px-6 bg-card" id="chase">
-      <div className="max-w-5xl mx-auto text-center">
-        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">When Clients Stall</p>
-        <h2 className="font-display text-2xl sm:text-3xl uppercase mb-4 leading-tight">
-          A clear path from{" "}
-          <span className="text-primary">overdue to resolved.</span>
+    <section className="py-20 px-6">
+      <div className="max-w-4xl mx-auto text-center">
+        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Why Klauza</p>
+        <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight mb-4">
+          Most freelancer tools help manage work.{" "}
+          <span className="text-primary">Klauza helps protect it.</span>
         </h2>
-        <p className="text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
-          Most freelancers freeze when a client stops paying. Klauza gives you a structured process — each step more serious than the last — so you never have to figure out what to do next.
+        <p className="text-sm text-muted-foreground mb-10 max-w-2xl mx-auto">
+          Templates help you start. Invoicing tools help you bill. Neither helps when a client sends you a contract with no kill fee, pays 60 days late, or stops responding entirely. Klauza is built for those moments.
         </p>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-left">
-          {stages.map((stage, i) => (
-            <div key={stage.label} className="p-4 sm:p-5 rounded-lg border border-border bg-background">
-              <span className="inline-flex w-7 h-7 rounded-full bg-primary/10 items-center justify-center text-xs font-display font-bold text-primary mb-3">{i + 1}</span>
-              <h3 className="text-sm font-semibold mb-1.5">{stage.label}</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">{stage.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8 p-5 rounded-lg border border-primary/20 bg-primary/5 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-          <div className="flex-1">
-            <p className="text-sm font-medium">Every letter references your actual contract terms and jurisdiction-specific law.</p>
-            <p className="text-xs text-muted-foreground mt-1">Supports US, UK, Canada, Nigeria, EU, Australia, India, and South Africa.</p>
-          </div>
-          <Link href="/auth">
-            <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-6 h-9 text-sm shrink-0">
-              See Chase Workflow
-            </Button>
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════
-// 6. DIFFERENTIATION — Why Klauza is not another admin tool
-// ═══════════════════════════════════════════════════════════
-function DifferentiationSection() {
-  return (
-    <section className="py-20 px-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-10">
-          <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Why Klauza</p>
-          <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight mb-6">
-            More than{" "}
-            <span className="text-primary">admin software.</span>
-          </h2>
-          <div className="space-y-4 text-sm text-muted-foreground leading-relaxed max-w-2xl mx-auto">
-            <p>
-              Most freelancer tools help you send invoices and manage projects. They work fine — until a client sends you a contract with no kill fee, pays 60 days late, or stops responding entirely.
-            </p>
-            <p>
-              Klauza is built for those moments. The ones that actually threaten your revenue.
-            </p>
-          </div>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-3 max-w-lg mx-auto">
-          {[
-            { label: "Generic tools", desc: "Proposals, invoices, time tracking", muted: true },
-            { label: "Klauza", desc: "Risk scanning, payment protection, structured enforcement", muted: false },
-          ].map((item) => (
+        <div className="grid sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
+          {comparisons.map((item) => (
             <div
               key={item.label}
               className={`p-5 rounded-lg border ${item.muted ? "border-border bg-muted/30" : "border-primary/30 bg-primary/5"}`}
@@ -375,7 +515,7 @@ function DifferentiationSection() {
               <p className={`text-xs font-display uppercase tracking-wider mb-1.5 ${item.muted ? "text-muted-foreground" : "text-primary"}`}>
                 {item.label}
               </p>
-              <p className={`text-sm ${item.muted ? "text-muted-foreground" : "text-foreground font-medium"}`}>
+              <p className={`text-sm leading-relaxed ${item.muted ? "text-muted-foreground" : "text-foreground font-medium"}`}>
                 {item.desc}
               </p>
             </div>
@@ -387,32 +527,34 @@ function DifferentiationSection() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 7. IDEAL CUSTOMER — Who this is for
+// 8. LAWYER-READY, NOT A LAW FIRM
 // ═══════════════════════════════════════════════════════════
-function IdealCustomerSection() {
-  const bullets = [
-    "You work directly with clients, not just through marketplaces",
-    "You've dealt with vague scopes, delayed payment, or weak contract terms",
-    "You want stronger protection without hiring a lawyer for every job",
-    "You charge enough that one bad client can cost you thousands",
-  ];
-
+function LawyerReadySection() {
   return (
     <section className="py-20 px-6" style={{ backgroundColor: '#141412' }}>
-      <div className="max-w-4xl mx-auto text-center">
-        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Who It's For</p>
-        <h2 className="font-display text-2xl sm:text-3xl uppercase text-white mb-6 leading-tight">
-          Built for freelancers{" "}
-          <span className="text-primary">with real client risk.</span>
+      <div className="max-w-3xl mx-auto text-center">
+        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Important Boundary</p>
+        <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight text-white mb-4">
+          Lawyer-ready.{" "}
+          <span className="text-primary">Not a law firm.</span>
         </h2>
-        <p className="text-sm text-white/50 mb-10 max-w-xl mx-auto">
-          If you've ever lost money to a bad contract or spent weeks chasing an invoice, you already know why this exists.
-        </p>
-        <div className="max-w-md mx-auto space-y-3 text-left">
-          {bullets.map((b) => (
-            <div key={b} className="flex items-start gap-3">
-              <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-              <p className="text-sm text-white/70">{b}</p>
+        <div className="space-y-4 text-sm text-white/50 leading-relaxed max-w-xl mx-auto mb-10">
+          <p>
+            Klauza is software for contract analysis, recovery workflows, and dispute organization. It is not legal advice and does not replace an attorney.
+          </p>
+          <p>
+            When legal escalation becomes necessary, Klauza helps you export a cleaner, better-prepared case file — so you spend less time getting your lawyer up to speed and more time focused on resolution.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-3 gap-3 max-w-xl mx-auto">
+          {[
+            { label: "Contract analysis", desc: "Flag risks before signing" },
+            { label: "Recovery workflows", desc: "Structured payment chase" },
+            { label: "Dispute organization", desc: "Lawyer-ready case files" },
+          ].map((item) => (
+            <div key={item.label} className="p-4 rounded-lg border border-white/10 text-left" style={{ backgroundColor: '#1e1d1a' }}>
+              <p className="text-xs font-medium text-white mb-1">{item.label}</p>
+              <p className="text-xs text-white/40">{item.desc}</p>
             </div>
           ))}
         </div>
@@ -422,69 +564,22 @@ function IdealCustomerSection() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 8. TESTIMONIALS
-// ═══════════════════════════════════════════════════════════
-function TestimonialsSection() {
-  const testimonials = [
-    {
-      quote: "Klauza caught a missing kill fee clause that would have cost me $12,000. Paid for itself in one scan.",
-      author: "Sarah K.",
-      role: "Brand Strategist",
-    },
-    {
-      quote: "A client ghosted on a $5,000 invoice. The demand letter got them to pay within a week.",
-      author: "Marcus T.",
-      role: "UX Designer",
-    },
-    {
-      quote: "I used to just accept bad payment terms because I didn't know what to push back on. Now I do.",
-      author: "Priya S.",
-      role: "Web Developer",
-    },
-  ];
-
-  return (
-    <section className="py-20 px-6 bg-card">
-      <div className="max-w-5xl mx-auto">
-        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4 text-center">From Freelancers</p>
-        <h2 className="font-display text-2xl sm:text-3xl uppercase mb-12 text-center">
-          Real protection.{" "}
-          <span className="text-primary">Real results.</span>
-        </h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {testimonials.map((t) => (
-            <Card key={t.author} className="p-5 bg-background border-border">
-              <Quote className="h-4 w-4 text-primary/40 mb-3" />
-              <p className="text-sm text-foreground/80 leading-relaxed mb-4">{t.quote}</p>
-              <div>
-                <p className="text-sm font-medium">{t.author}</p>
-                <p className="text-xs text-muted-foreground">{t.role}</p>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════
-// 9. PRICING — Framed as protection ROI
+// 9. PRICING — ROI-framed
 // ═══════════════════════════════════════════════════════════
 function PricingSection() {
   const proFeatures = [
-    "10 contract scans per month",
-    "Risk reports across 17 categories",
-    "Jurisdiction-aware contract templates",
+    "10 AI contract scans per month",
+    "17-category risk analysis",
+    "AI contract builder with jurisdiction support",
     "Invoice tracking with overdue detection",
     "4-stage payment chase workflow",
-    "Demand letter generation",
-    "Client risk scoring",
+    "AI demand letter generation",
     "Evidence organizer for disputes",
+    "Client records and risk scoring",
   ];
   const enterpriseFeatures = [
     "Everything in Pro",
-    "50 contract scans per month",
+    "50 AI contract scans per month",
     "Team collaboration",
     "API access",
     "Custom branding",
@@ -494,15 +589,15 @@ function PricingSection() {
   ];
 
   return (
-    <section className="py-20 px-6" id="pricing">
+    <section className="py-20 px-6 bg-card" id="pricing">
       <div className="max-w-4xl mx-auto">
         <p className="text-xs font-display tracking-widest text-primary uppercase mb-4 text-center">Pricing</p>
         <h2 className="font-display text-xl sm:text-2xl md:text-3xl uppercase mb-3 text-center leading-tight max-w-2xl mx-auto">
-          One missed payment costs more{" "}
-          <span className="text-primary">than a year of Klauza.</span>
+          One prevented dispute pays for{" "}
+          <span className="text-primary">months of Klauza.</span>
         </h2>
         <p className="text-sm text-muted-foreground text-center mb-12 max-w-lg mx-auto">
-          For $80/month, you catch contract risk earlier, strengthen payment terms, and act faster when clients stop paying.
+          One recovered invoice or one caught kill fee clause can return more than a full year of the subscription. Protection that pays for itself.
         </p>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -514,7 +609,7 @@ function PricingSection() {
                 <span className="text-3xl font-bold text-white">$80</span>
                 <span className="text-sm text-white/50">/mo</span>
               </div>
-              <p className="text-xs text-white/40 mt-1">For freelancers and consultants</p>
+              <p className="text-xs text-white/40 mt-1">Contract scanning + payment recovery</p>
             </div>
             <ul className="space-y-2 mb-6">
               {proFeatures.map((f) => (
@@ -532,7 +627,7 @@ function PricingSection() {
           </Card>
 
           {/* Enterprise */}
-          <Card className="p-6 bg-card border-border">
+          <Card className="p-6 bg-background border-border">
             <div className="mb-6">
               <span className="text-xs font-display tracking-widest text-muted-foreground uppercase">Enterprise</span>
               <div className="flex items-baseline gap-1 mt-2">
@@ -569,11 +664,11 @@ function FinalCTA() {
     <section className="py-20 px-6" style={{ backgroundColor: '#141412' }}>
       <div className="max-w-3xl mx-auto text-center">
         <h2 className="font-display text-xl sm:text-2xl md:text-3xl uppercase text-white leading-tight">
-          Protect the next contract{" "}
-          <span className="text-primary">before it becomes a problem.</span>
+          Scan before signing.{" "}
+          <span className="text-primary">Chase when they stall.</span>
         </h2>
         <p className="text-sm text-white/40 mt-4 max-w-xl mx-auto">
-          Scan your agreement, strengthen the terms, and stay ready if a client stops paying.
+          Flag risky clauses, strengthen your agreements, and have a system ready when a client stops paying.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
           <Link href="/auth">
@@ -582,13 +677,14 @@ function FinalCTA() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
-          <Button
-            variant="outline"
-            className="rounded-full px-8 h-12 text-sm border-white/20 text-white/70 hover:bg-white/10 hover:text-white"
-            onClick={() => document.getElementById('chase')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            View Payment Chase Workflow
-          </Button>
+          <Link href="/auth">
+            <Button
+              variant="outline"
+              className="rounded-full px-8 h-12 text-sm border-white/20 text-white/70 hover:bg-white/10 hover:text-white"
+            >
+              Start a Dispute
+            </Button>
+          </Link>
         </div>
         <p className="text-[11px] text-white/25 mt-8">
           Klauza is a self-help tool for freelancers, not a law firm. We do not provide legal advice or representation.
@@ -612,15 +708,15 @@ function Footer() {
             </div>
             <span className="font-display text-xs tracking-[0.2em]">KLAUZA</span>
           </div>
-          <p className="text-xs text-muted-foreground">Protect your work.<br />Get paid with confidence.</p>
+          <p className="text-xs text-muted-foreground">Scan before signing.<br />Chase when they stall.</p>
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider mb-3">Protection</p>
           <ul className="space-y-2 text-xs text-muted-foreground">
             <li><Link href="/auth" className="hover:text-foreground transition-colors">Contract Scanner</Link></li>
-            <li><Link href="/auth" className="hover:text-foreground transition-colors">Contract Templates</Link></li>
-            <li><Link href="/auth" className="hover:text-foreground transition-colors">Invoice Chase</Link></li>
-            <li><Link href="/auth" className="hover:text-foreground transition-colors">Client Records</Link></li>
+            <li><Link href="/auth" className="hover:text-foreground transition-colors">Contract Builder</Link></li>
+            <li><Link href="/auth" className="hover:text-foreground transition-colors">Dispute Chase</Link></li>
+            <li><Link href="/auth" className="hover:text-foreground transition-colors">Evidence Pack</Link></li>
           </ul>
         </div>
         <div>
@@ -656,14 +752,13 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background" data-testid="landing-page">
       <Navbar />
       <HeroSection />
-      <ProofBar />
-      <ProofExample />
+      <CostOfProblem />
+      <TwoMoments />
       <HowItWorks />
-      <OutcomesSection />
-      <ChaseSection />
+      <CoreFeatures />
+      <SampleOutcomes />
       <DifferentiationSection />
-      <IdealCustomerSection />
-      <TestimonialsSection />
+      <LawyerReadySection />
       <PricingSection />
       <FinalCTA />
       <Footer />
