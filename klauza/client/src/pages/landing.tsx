@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,12 +19,30 @@ import {
   FileWarning,
   Package,
   ChevronRight,
+  Menu,
+  X as XIcon,
+  Bot,
+  Sparkles,
 } from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════
 // NAVBAR
 // ═══════════════════════════════════════════════════════════
 function Navbar() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const navLinks = [
+    { label: "Product", id: "product" },
+    { label: "How It Works", id: "how-it-works" },
+    { label: "Protection", id: "protection" },
+    { label: "Pricing", id: "pricing" },
+  ];
+
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    setMobileOpen(false);
+  };
+
   return (
     <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-14">
@@ -33,33 +52,22 @@ function Navbar() {
           </div>
           <span className="font-display text-sm tracking-[0.3em] text-foreground">K L A U Z A</span>
         </div>
+
+        {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-8">
-          <button
-            onClick={() => document.getElementById('product')?.scrollIntoView({ behavior: 'smooth' })}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Product
-          </button>
-          <button
-            onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            How It Works
-          </button>
-          <button
-            onClick={() => document.getElementById('protection')?.scrollIntoView({ behavior: 'smooth' })}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Protection
-          </button>
-          <button
-            onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Pricing
-          </button>
+          {navLinks.map((link) => (
+            <button
+              key={link.id}
+              onClick={() => scrollTo(link.id)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {link.label}
+            </button>
+          ))}
         </div>
-        <div className="flex items-center gap-3">
+
+        {/* Desktop right */}
+        <div className="hidden md:flex items-center gap-3">
           <Link href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Sign In
           </Link>
@@ -69,7 +77,51 @@ function Navbar() {
             </Button>
           </Link>
         </div>
+
+        {/* Mobile right */}
+        <div className="flex md:hidden items-center gap-3">
+          <Link href="/auth">
+            <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-xs px-4 h-8">
+              Scan
+            </Button>
+          </Link>
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="p-1.5 rounded-md hover:bg-muted transition-colors"
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <XIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile menu */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-md">
+          <div className="px-6 py-4 space-y-1">
+            {navLinks.map((link) => (
+              <button
+                key={link.id}
+                onClick={() => scrollTo(link.id)}
+                className="block w-full text-left py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </button>
+            ))}
+            <div className="pt-3 border-t border-border mt-2">
+              <Link href="/auth" className="block py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Sign In
+              </Link>
+              <Link href="/auth" className="block mt-1">
+                <Button className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm h-10">
+                  Scan a Contract
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
@@ -91,7 +143,7 @@ function HeroSection() {
         </h1>
 
         <p className="mt-6 text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-          Klauza helps freelancers flag risky contract clauses, strengthen agreements, recover overdue payments, and organize disputes before legal escalation.
+          Klauza AI flags risky contract clauses, strengthens your agreements, generates escalation letters for overdue payments, and organizes disputes before legal escalation.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
@@ -194,6 +246,33 @@ function HeroSection() {
               <p className="text-xs font-medium text-orange-600">37 days</p>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// 1b. PROOF BAR — Specific, AI-powered outcomes
+// ═══════════════════════════════════════════════════════════
+function ProofBar() {
+  const items = [
+    { icon: Search, text: "Klauza AI scans 17 risk categories per contract" },
+    { icon: Shield, text: "AI-generated clauses for kill fees, IP, and payment" },
+    { icon: Zap, text: "AI demand letters cite your terms and jurisdiction law" },
+    { icon: Sparkles, text: "1 free scan — no credit card required" },
+  ];
+
+  return (
+    <section className="py-6 border-y border-border bg-card">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+          {items.map((item) => (
+            <div key={item.text} className="flex items-start gap-2.5">
+              <item.icon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <p className="text-xs sm:text-sm text-foreground/80 font-medium leading-snug">{item.text}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -317,20 +396,20 @@ function HowItWorks() {
   const steps = [
     {
       num: "01",
-      title: "Scan the contract before work begins",
-      desc: "Upload any agreement. Klauza AI scans it across 17 risk categories and flags exactly what needs fixing — weak payment terms, missing kill fees, vague scope, IP traps.",
+      title: "Klauza AI scans the contract",
+      desc: "Upload any agreement. Klauza AI analyzes it across 17 risk categories and flags exactly what needs fixing — weak payment terms, missing kill fees, vague scope, IP traps, and more.",
       icon: Search,
     },
     {
       num: "02",
-      title: "Chase and structure the dispute",
-      desc: "If a client goes past due, Klauza generates escalating follow-ups — from a professional reminder to a formal demand letter citing your contract terms and jurisdiction-specific law.",
+      title: "Klauza AI chases the payment",
+      desc: "If a client goes past due, Klauza AI generates escalating follow-ups — from a professional reminder to a formal demand letter that cites your contract terms and jurisdiction-specific law.",
       icon: Zap,
     },
     {
       num: "03",
       title: "Escalate with a lawyer-ready case file",
-      desc: "Invoices, contracts, email records, timeline, and calculated damages — organized into one clean file so you show up prepared if legal escalation becomes necessary.",
+      desc: "Invoices, contracts, email records, timeline, and calculated damages — organized into one clean file so you show up fully prepared if legal escalation becomes necessary.",
       icon: Package,
     },
   ];
@@ -340,11 +419,11 @@ function HowItWorks() {
       <div className="max-w-5xl mx-auto text-center">
         <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">How It Works</p>
         <h2 className="font-display text-2xl sm:text-3xl uppercase mb-4 leading-tight">
-          Scan. Chase.{" "}
+          AI-powered scan. AI-powered chase.{" "}
           <span className="text-primary">Escalate if needed.</span>
         </h2>
         <p className="text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
-          Three steps that cover the two moments freelancers actually lose money: signing weak terms, and having no system when a client stops paying.
+          Klauza AI handles the two moments freelancers actually lose money: signing weak terms, and having no system when a client stops paying.
         </p>
 
         <div className="grid md:grid-cols-3 gap-6 text-center">
@@ -371,18 +450,18 @@ function CoreFeatures() {
   const features = [
     {
       icon: Search,
-      title: "Contract Risk Scanner",
-      desc: "Upload a contract and flag risky clauses before they cost you money. Klauza AI analyzes 17 categories — payment terms, kill fees, IP ownership, scope boundaries, termination language, and more.",
+      title: "AI Contract Risk Scanner",
+      desc: "Upload a contract and Klauza AI analyzes it across 17 risk categories — payment terms, kill fees, IP ownership, scope boundaries, termination language. Get a safety score and specific fix recommendations.",
     },
     {
       icon: FileText,
-      title: "Freelancer Contract Builder",
-      desc: "Create stronger contracts with better payment, scope, and termination protection. Every agreement includes built-in kill fees, IP transfer on payment, late penalties, and jurisdiction-aware language.",
+      title: "AI Contract Builder",
+      desc: "Describe your project and Klauza AI writes a complete freelance agreement with built-in kill fees, IP transfer on payment, late penalties, scope boundaries, and jurisdiction-aware legal language.",
     },
     {
       icon: Zap,
-      title: "Dispute Chase Engine",
-      desc: "Generate escalation emails, structured follow-ups, and next-step guidance for overdue invoices. Four stages — friendly reminder, formal notice, demand letter, court preparation.",
+      title: "AI Dispute Chase Engine",
+      desc: "Klauza AI generates escalation emails, structured follow-ups, and demand letters for overdue invoices. Four stages — friendly reminder, formal notice, demand letter, court preparation.",
     },
     {
       icon: Package,
@@ -394,13 +473,13 @@ function CoreFeatures() {
   return (
     <section className="py-20 px-6" id="protection" style={{ backgroundColor: '#141412' }}>
       <div className="max-w-6xl mx-auto text-center">
-        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Core Protection</p>
+        <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Powered by Klauza AI</p>
         <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight text-white mb-4">
-          Contract analysis.{" "}
-          <span className="text-primary">Payment recovery.</span>
+          AI contract analysis.{" "}
+          <span className="text-primary">AI payment recovery.</span>
         </h2>
         <p className="text-sm text-white/40 mb-12 max-w-xl mx-auto">
-          Four tools that cover the full lifecycle of freelancer risk — from the contract you sign to the payment you collect.
+          Four AI-powered tools that cover the full lifecycle of freelancer risk — from the contract you sign to the payment you collect.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 text-left">
@@ -600,16 +679,50 @@ function PricingSection() {
           One recovered invoice or one caught kill fee clause can return more than a full year of the subscription. Protection that pays for itself.
         </p>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-3 gap-4 lg:gap-6">
+          {/* Free */}
+          <Card className="p-6 bg-background border-border">
+            <div className="mb-6">
+              <span className="text-xs font-display tracking-widest text-muted-foreground uppercase">Free</span>
+              <div className="flex items-baseline gap-1 mt-2">
+                <span className="text-3xl font-bold">$0</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Try Klauza AI — no card required</p>
+            </div>
+            <ul className="space-y-2 mb-6">
+              {[
+                "1 AI contract scan",
+                "17-category risk analysis",
+                "Safety score + fix recommendations",
+                "1 contract creation",
+                "1 invoice",
+                "2 client records",
+              ].map((f) => (
+                <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Check className="h-3.5 w-3.5 text-foreground/60 shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <Link href="/auth">
+              <Button variant="outline" className="w-full rounded-full">
+                Scan for Free
+              </Button>
+            </Link>
+          </Card>
+
           {/* Pro */}
-          <Card className="p-6 border-2 border-primary" style={{ backgroundColor: '#141412' }}>
+          <Card className="p-6 border-2 border-primary relative" style={{ backgroundColor: '#141412' }}>
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <span className="bg-primary text-primary-foreground text-[10px] font-display tracking-wider uppercase px-3 py-1 rounded-full">Most Popular</span>
+            </div>
             <div className="mb-6">
               <span className="text-xs font-display tracking-widest text-primary uppercase">Pro</span>
               <div className="flex items-baseline gap-1 mt-2">
                 <span className="text-3xl font-bold text-white">$80</span>
                 <span className="text-sm text-white/50">/mo</span>
               </div>
-              <p className="text-xs text-white/40 mt-1">Contract scanning + payment recovery</p>
+              <p className="text-xs text-white/40 mt-1">AI scanning + AI chase + recovery</p>
             </div>
             <ul className="space-y-2 mb-6">
               {proFeatures.map((f) => (
@@ -668,7 +781,7 @@ function FinalCTA() {
           <span className="text-primary">Chase when they stall.</span>
         </h2>
         <p className="text-sm text-white/40 mt-4 max-w-xl mx-auto">
-          Flag risky clauses, strengthen your agreements, and have a system ready when a client stops paying.
+          Klauza AI flags risky clauses, strengthens your agreements, and gives you a system to respond when a client stops paying. Start with 1 free scan.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
           <Link href="/auth">
@@ -752,6 +865,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background" data-testid="landing-page">
       <Navbar />
       <HeroSection />
+      <ProofBar />
       <CostOfProblem />
       <TwoMoments />
       <HowItWorks />
