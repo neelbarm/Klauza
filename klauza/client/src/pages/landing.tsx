@@ -73,7 +73,7 @@ function Navbar() {
           </Link>
           <Link href="/auth">
             <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm px-5 h-9">
-              Scan a Contract
+              <Shield className="mr-1.5 h-3.5 w-3.5" /> Get Protected
             </Button>
           </Link>
         </div>
@@ -82,7 +82,7 @@ function Navbar() {
         <div className="flex md:hidden items-center gap-3">
           <Link href="/auth">
             <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-xs px-4 h-8">
-              Scan
+              <Shield className="mr-1 h-3 w-3" /> Protect
             </Button>
           </Link>
           <button
@@ -114,8 +114,7 @@ function Navbar() {
               </Link>
               <Link href="/auth" className="block mt-1">
                 <Button className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm h-10">
-                  Scan a Contract
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <Shield className="mr-2 h-4 w-4" /> Get Protected
                 </Button>
               </Link>
             </div>
@@ -134,7 +133,7 @@ function HeroSection() {
     <section className="pt-28 pb-16 px-6">
       <div className="max-w-5xl mx-auto text-center">
         <p className="text-xs font-display tracking-[0.3em] text-primary uppercase mb-6">
-          Freelancer protection infrastructure
+          AI-powered freelancer protection
         </p>
 
         <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] uppercase leading-[1.12] tracking-tight max-w-3xl mx-auto">
@@ -149,7 +148,7 @@ function HeroSection() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
           <Link href="/auth">
             <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-12 text-sm font-medium">
-              Scan a Contract
+              <Shield className="mr-2 h-4 w-4" /> Get Protected
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
@@ -158,7 +157,7 @@ function HeroSection() {
               variant="outline"
               className="rounded-full px-8 h-12 text-sm border-border"
             >
-              Start a Dispute
+              See How It Works
             </Button>
           </Link>
         </div>
@@ -166,10 +165,10 @@ function HeroSection() {
         {/* Hero proof bullets */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
           {[
-            "Flag risky clauses fast",
-            "Build stronger freelancer protection",
-            "Chase overdue payments",
-            "Organize dispute evidence clearly",
+            "Protect yourself before signing",
+            "Strengthen every contract with AI",
+            "Recover overdue payments faster",
+            "Stay prepared if disputes escalate",
           ].map((b) => (
             <div key={b} className="flex items-center gap-2">
               <Check className="h-3.5 w-3.5 text-primary shrink-0" />
@@ -183,8 +182,8 @@ function HeroSection() {
           {/* Left: Contract scan result */}
           <div className="p-4 rounded-lg border border-border bg-card text-left">
             <div className="flex items-center gap-2 mb-3">
-              <Search className="h-3.5 w-3.5 text-primary" />
-              <p className="text-xs font-medium">Contract Analysis</p>
+              <Shield className="h-3.5 w-3.5 text-primary" />
+              <p className="text-xs font-medium">Contract Protection</p>
             </div>
             <div className="space-y-2">
               <div className="flex items-start gap-2">
@@ -210,7 +209,7 @@ function HeroSection() {
           <div className="p-4 rounded-lg border border-border bg-card text-left">
             <div className="flex items-center gap-2 mb-3">
               <Zap className="h-3.5 w-3.5 text-primary" />
-              <p className="text-xs font-medium">Dispute Chase</p>
+              <p className="text-xs font-medium">Payment Recovery</p>
             </div>
             <div className="space-y-2.5">
               <div className="flex items-center gap-2">
@@ -257,10 +256,10 @@ function HeroSection() {
 // ═══════════════════════════════════════════════════════════
 function ProofBar() {
   const items = [
-    { icon: Search, text: "Klauza AI scans 17 risk categories per contract" },
-    { icon: Shield, text: "AI-generated clauses for kill fees, IP, and payment" },
-    { icon: Zap, text: "AI demand letters cite your terms and jurisdiction law" },
-    { icon: Sparkles, text: "1 free scan — no credit card required" },
+    { icon: Shield, text: "AI protection across 17 contract risk categories" },
+    { icon: FileText, text: "AI-built clauses for kill fees, IP, and payment" },
+    { icon: Zap, text: "AI recovery letters that cite your terms and law" },
+    { icon: Sparkles, text: "Start free — no credit card required" },
   ];
 
   return (
@@ -419,11 +418,11 @@ function HowItWorks() {
       <div className="max-w-5xl mx-auto text-center">
         <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">How It Works</p>
         <h2 className="font-display text-2xl sm:text-3xl uppercase mb-4 leading-tight">
-          AI-powered scan. AI-powered chase.{" "}
-          <span className="text-primary">Escalate if needed.</span>
+          Protection before signing.{" "}
+          <span className="text-primary">Recovery after delivery.</span>
         </h2>
         <p className="text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
-          Klauza AI handles the two moments freelancers actually lose money: signing weak terms, and having no system when a client stops paying.
+          Klauza AI protects you at the two moments freelancers actually lose money: signing weak terms, and having no system when a client stops paying.
         </p>
 
         <div className="grid md:grid-cols-3 gap-6 text-center">
@@ -475,11 +474,11 @@ function CoreFeatures() {
       <div className="max-w-6xl mx-auto text-center">
         <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Powered by Klauza AI</p>
         <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight text-white mb-4">
-          AI contract analysis.{" "}
+          AI contract protection.{" "}
           <span className="text-primary">AI payment recovery.</span>
         </h2>
         <p className="text-sm text-white/40 mb-12 max-w-xl mx-auto">
-          Four AI-powered tools that cover the full lifecycle of freelancer risk — from the contract you sign to the payment you collect.
+          Four AI-powered tools that protect you across the full lifecycle of freelancer risk — from the contract you sign to the payment you collect.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 text-left">
@@ -536,11 +535,11 @@ function SampleOutcomes() {
       <div className="max-w-5xl mx-auto text-center">
         <p className="text-xs font-display tracking-widest text-primary uppercase mb-4">Example Outcomes</p>
         <h2 className="font-display text-2xl sm:text-3xl uppercase leading-tight mb-4">
-          What Klauza catches.{" "}
-          <span className="text-primary">What Klauza recovers.</span>
+          Protection in action.{" "}
+          <span className="text-primary">Recovery in practice.</span>
         </h2>
         <p className="text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
-          Sample workflows showing how Klauza protects freelancers before and after signing.
+          Real examples of how Klauza AI protects freelancers before signing and recovers leverage after delivery.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 text-left">
@@ -570,7 +569,7 @@ function DifferentiationSection() {
   const comparisons = [
     { label: "Templates", desc: "Help you start work", muted: true },
     { label: "Invoicing tools", desc: "Help you send bills", muted: true },
-    { label: "Klauza", desc: "Helps you avoid bad contracts and recover leverage when payment breaks down", muted: false },
+    { label: "Klauza", desc: "Protects you from bad contracts and recovers your leverage when payment breaks down", muted: false },
   ];
 
   return (
@@ -706,7 +705,7 @@ function PricingSection() {
             </ul>
             <Link href="/auth">
               <Button variant="outline" className="w-full rounded-full">
-                Scan for Free
+                Start Free Protection
               </Button>
             </Link>
           </Card>
@@ -722,7 +721,7 @@ function PricingSection() {
                 <span className="text-3xl font-bold text-white">$80</span>
                 <span className="text-sm text-white/50">/mo</span>
               </div>
-              <p className="text-xs text-white/40 mt-1">AI scanning + AI chase + recovery</p>
+              <p className="text-xs text-white/40 mt-1">Full AI protection + recovery</p>
             </div>
             <ul className="space-y-2 mb-6">
               {proFeatures.map((f) => (
@@ -786,7 +785,7 @@ function FinalCTA() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
           <Link href="/auth">
             <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-12 text-sm font-medium">
-              Scan a Contract
+              <Shield className="mr-2 h-4 w-4" /> Get Protected
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
@@ -795,7 +794,7 @@ function FinalCTA() {
               variant="outline"
               className="rounded-full px-8 h-12 text-sm border-white/20 text-white/70 hover:bg-white/10 hover:text-white"
             >
-              Start a Dispute
+              See How It Works
             </Button>
           </Link>
         </div>
@@ -821,7 +820,7 @@ function Footer() {
             </div>
             <span className="font-display text-xs tracking-[0.2em]">KLAUZA</span>
           </div>
-          <p className="text-xs text-muted-foreground">Scan before signing.<br />Chase when they stall.</p>
+          <p className="text-xs text-muted-foreground">AI-powered protection<br />for freelancers.</p>
         </div>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider mb-3">Protection</p>
