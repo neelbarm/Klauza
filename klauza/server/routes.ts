@@ -1399,7 +1399,19 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
 
       await storage.incrementScanUsage(req.user!.id);
       const analysis = await scanContract(contractText);
-      res.json({ analysis, textLength: contractText.length });
+
+      // Auto-save scanned contract to My Contracts
+      const fileName = req.file?.originalname || req.body.title || "Scanned Contract";
+      const contract = await storage.createContract({
+        userId: req.user!.id,
+        title: fileName,
+        type: "sow",
+        status: "draft",
+        strengthScore: analysis.overallScore || 0,
+        content: JSON.stringify(analysis),
+      });
+
+      res.json({ analysis, contract, textLength: contractText.length });
     } catch (error: any) {
       console.error("Contract scan error:", error);
       res.status(500).json({ error: "Failed to scan contract: " + (error.message || "Unknown error") });
@@ -1428,14 +1440,28 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
 
 Include all standard protections: kill fee, IP clause, payment terms (Net 30), revision limits, termination, liability cap, dispute resolution.`;
 
-      let contract: string;
+      let contractText: string;
       if (scanResults && (scanResults.risks?.length > 0 || scanResults.missingProtections?.length > 0)) {
         // Use AI contract generation that addresses specific scan findings
-        contract = await generateAIContractFromScan(scanResults, context);
+        contractText = await generateAIContractFromScan(scanResults, context);
       } else {
-        contract = await generateProtectiveContract(context);
+        contractText = await generateProtectiveContract(context);
       }
-      res.json({ contract });
+
+      // Auto-save generated contract to My Contracts
+      const contractTitle = clientName
+        ? `${clientName} - Service Agreement`
+        : "Generated Service Agreement";
+      const savedContract = await storage.createContract({
+        userId: req.user!.id,
+        title: contractTitle,
+        type: "sow",
+        status: "draft",
+        strengthScore: 85, // Generated contracts have strong protections by default
+        content: contractText,
+      });
+
+      res.json({ contract: contractText, savedContract });
     } catch (error: any) {
       console.error("Contract generation error:", error);
       res.status(500).json({ error: "Failed to generate contract" });

@@ -445,6 +445,7 @@ function ScanContractTab() {
     setScanning(true);
     setSavedContractId(null);
     try {
+      let data: any;
       if (file) {
         const formData = new FormData();
         formData.append("file", file);
@@ -464,19 +465,24 @@ function ScanContractTab() {
           }
           throw new Error(err.error || "Scan failed");
         }
-        const data = await res.json();
-        setScanResult(data.analysis);
+        data = await res.json();
       } else if (pastedText.trim()) {
         const body: any = { text: pastedText };
         if (useOverage) body.overage = true;
         const res = await apiRequest("POST", "/api/scan-contract", body);
-        const data = await res.json();
-        setScanResult(data.analysis);
+        data = await res.json();
       } else {
         setScanError("Please upload a file or paste contract text.");
         setScanning(false);
         return;
       }
+      setScanResult(data.analysis);
+      // Contract is auto-saved by the backend
+      if (data.contract?.id) {
+        setSavedContractId(data.contract.id);
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["/api/scan-usage"] });
       setOverageMode(false);
     } catch (err: any) {
@@ -525,6 +531,8 @@ function ScanContractTab() {
       });
       const data = await res.json();
       setGeneratedContract(data.contract);
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Failed to generate contract", variant: "destructive" });
     }
@@ -682,24 +690,9 @@ function ScanContractTab() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              {savedContractId ? (
-                <Badge className="bg-green-100 text-green-700 border-green-200">
-                  <CheckCircle className="h-3 w-3 mr-1" /> Saved
-                </Badge>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={handleSaveToContracts}
-                  disabled={saving}
-                  className="bg-orange-500 hover:bg-orange-600 text-white"
-                >
-                  {saving ? (
-                    <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Saving...</>
-                  ) : (
-                    <><Save className="h-3 w-3 mr-1" /> Save to My Contracts</>
-                  )}
-                </Button>
-              )}
+              <Badge className="bg-green-100 text-green-700 border-green-200">
+                <CheckCircle className="h-3 w-3 mr-1" /> Auto-saved to My Contracts
+              </Badge>
             </div>
           </div>
 
@@ -817,6 +810,9 @@ function GenerateContractTab() {
       });
       const data = await res.json();
       setGeneratedContract(data.contract);
+      // Refresh contracts list since backend auto-saves
+      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Failed to generate contract", variant: "destructive" });
     }
@@ -889,8 +885,13 @@ function GenerateContractTab() {
       ) : (
         <Card className="border-border">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Generated Contract</CardTitle>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <CardTitle className="text-base">Generated Contract</CardTitle>
+                <Badge className="bg-green-100 text-green-700 border-green-200">
+                  <CheckCircle className="h-3 w-3 mr-1" /> Auto-saved to My Contracts
+                </Badge>
+              </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={handleCopyAll}>
                   <Copy className="h-3 w-3 mr-1" /> Copy to Clipboard
