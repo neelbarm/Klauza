@@ -26,10 +26,10 @@ const PLANS = [
     period: "/mo",
     description: "Get started risk-free",
     features: [
+      "1 free contract scan",
       "2 clients",
       "1 invoice",
       "Basic dashboard",
-      "No contract scans",
     ],
   },
   {

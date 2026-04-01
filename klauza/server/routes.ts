@@ -29,7 +29,7 @@ import type { DemandLetterContext } from "./ai-scanner";
 const FREE_LIMITS = { contracts: 1, invoices: 1, clients: 2, disputes: 0 };
 
 const SCAN_LIMITS: Record<string, number> = {
-  free: parseInt(process.env.PERPLEXITY_SCANS_FREE || "0"),
+  free: parseInt(process.env.PERPLEXITY_SCANS_FREE || "1"),
   pro: parseInt(process.env.PERPLEXITY_SCANS_PRO || "10"),
   enterprise: parseInt(process.env.PERPLEXITY_SCANS_ENTERPRISE || "50"),
 };
