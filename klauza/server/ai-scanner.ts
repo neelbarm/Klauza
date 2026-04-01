@@ -95,7 +95,9 @@ When given contract text, analyze it and return a JSON object with this EXACT st
 
 Analyze across these 17 categories: Payment Terms, Kill Fee/Cancellation, IP Ownership, Scope Definition, Revision Limits, Late Payment Penalties, Termination Clause, Non-Compete, Confidentiality, Liability Cap, Indemnification, Dispute Resolution, Work-for-Hire, Deliverable Specifications, Timeline/Deadlines, Subcontracting Rights, Force Majeure.
 
-Be specific. Quote actual clauses. Give actionable recommendations. Always suggest adding a kill fee if one is missing.`;
+Be specific. Quote actual clauses. Give actionable recommendations. Always suggest adding a kill fee if one is missing.
+
+IMPORTANT: Return ONLY the raw JSON object. Do NOT wrap it in markdown code fences or backticks. Start your response with { and end with }.`;
 
 export async function scanContract(contractText: string): Promise<any> {
   const trimmed = contractText.substring(0, 15000);
@@ -129,6 +131,7 @@ export async function scanContract(contractText: string): Promise<any> {
     }
   } catch (_) {}
 
+  console.error("All JSON parse strategies failed. Response starts with:", result.substring(0, 100));
   return {
     overallScore: 50,
     riskLevel: "MEDIUM",
