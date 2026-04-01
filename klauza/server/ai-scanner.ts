@@ -1,5 +1,5 @@
-const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY || "";
-const SONAR_URL = "https://api.perplexity.ai/chat/completions";
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
+const CLAUDE_URL = "https://api.anthropic.com/v1/messages";
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;
 
@@ -7,9 +7,9 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-// Call Perplexity Sonar API with retry logic
-async function callPerplexity(systemPrompt: string, userMessage: string): Promise<string> {
-  if (!PERPLEXITY_API_KEY) {
+// Call Claude API (Haiku 4.5) with retry logic
+async function callClaude(systemPrompt: string, userMessage: string): Promise<string> {
+  if (!ANTHROPIC_API_KEY) {
     return generateDemoAnalysis(userMessage);
   }
 
@@ -18,43 +18,44 @@ async function callPerplexity(systemPrompt: string, userMessage: string): Promis
     try {
       if (attempt > 0) await sleep(RETRY_DELAY_MS * attempt);
 
-      const response = await fetch(SONAR_URL, {
+      const response = await fetch(CLAUDE_URL, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "sonar-pro",
+          model: "claude-haiku-4-5-20241022",
+          max_tokens: 4000,
+          system: systemPrompt,
           messages: [
-            { role: "system", content: systemPrompt },
             { role: "user", content: userMessage },
           ],
-          max_tokens: 4000,
         }),
       });
 
       if (response.status === 429 || response.status >= 500) {
         lastError = `HTTP ${response.status}`;
-        console.error(`Perplexity API attempt ${attempt + 1} failed: ${lastError}`);
+        console.error(`Claude API attempt ${attempt + 1} failed: ${lastError}`);
         continue;
       }
 
       if (!response.ok) {
         const err = await response.text();
-        console.error("Perplexity API error:", err);
+        console.error("Claude API error:", err);
         return generateDemoAnalysis(userMessage);
       }
 
       const data = await response.json() as any;
-      return data.choices?.[0]?.message?.content || "Analysis could not be completed.";
+      return data.content?.[0]?.text || "Analysis could not be completed.";
     } catch (err: any) {
       lastError = err.message || "Network error";
-      console.error(`Perplexity API attempt ${attempt + 1} error:`, lastError);
+      console.error(`Claude API attempt ${attempt + 1} error:`, lastError);
     }
   }
 
-  console.error(`Perplexity API failed after ${MAX_RETRIES + 1} attempts, falling back to demo analysis`);
+  console.error(`Claude API failed after ${MAX_RETRIES + 1} attempts, falling back to demo analysis`);
   return generateDemoAnalysis(userMessage);
 }
 
@@ -98,7 +99,7 @@ Be specific. Quote actual clauses. Give actionable recommendations. Always sugge
 
 export async function scanContract(contractText: string): Promise<any> {
   const trimmed = contractText.substring(0, 15000);
-  const result = await callPerplexity(CONTRACT_SCAN_SYSTEM, `Analyze this freelance contract:\n\n${trimmed}`);
+  const result = await callClaude(CONTRACT_SCAN_SYSTEM, `Analyze this freelance contract:\n\n${trimmed}`);
 
   // Try multiple JSON extraction strategies
   try {
@@ -156,7 +157,7 @@ When given context about a project, generate a complete, professional freelance 
 Use plain, enforceable language. Make it strongly protective of the freelancer while being fair to the client.`;
 
 export async function generateProtectiveContract(context: string): Promise<string> {
-  return callPerplexity(CONTRACT_GENERATE_SYSTEM, context);
+  return callClaude(CONTRACT_GENERATE_SYSTEM, context);
 }
 
 // ============================================================================
@@ -256,15 +257,15 @@ ${context.evidenceList.length > 0 ? context.evidenceList.map((e, i) => `${i + 1}
 
 TODAY'S DATE: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`;
 
-  // callPerplexity falls back to generateDemoAnalysis if no API key is set.
+  // callClaude falls back to generateDemoAnalysis if no API key is set.
   // Since demo analysis is designed for contract scanning, we catch that case
   // and return empty string so the caller can fall back to templates.
-  if (!PERPLEXITY_API_KEY) {
+  if (!ANTHROPIC_API_KEY) {
     return ""; // Signal to caller: use template fallback
   }
 
   try {
-    const result = await callPerplexity(systemPrompt, userMessage);
+    const result = await callClaude(systemPrompt, userMessage);
     // If the result looks like the demo contract scan JSON, it means the API
     // wasn't available and the fallback fired — return empty to trigger template fallback
     if (result.startsWith("{") && result.includes("overallScore")) {
@@ -336,7 +337,7 @@ SCAN SUMMARY: ${scanResults?.summary || "N/A"}
 
 Generate a complete contract that specifically addresses ALL of the above risks and incorporates ALL suggested protections. Each protective clause should be clearly labeled.`;
 
-  return callPerplexity(CONTRACT_FROM_SCAN_SYSTEM, userMessage);
+  return callClaude(CONTRACT_FROM_SCAN_SYSTEM, userMessage);
 }
 
 // Invoice parsing prompt
@@ -361,7 +362,7 @@ If a due date isn't explicitly stated, infer from payment terms (e.g., Net 30 = 
 
 export async function parseInvoice(invoiceText: string): Promise<any> {
   const trimmed = invoiceText.substring(0, 10000);
-  const result = await callPerplexity(INVOICE_PARSE_SYSTEM, `Extract data from this invoice:\n\n${trimmed}`);
+  const result = await callClaude(INVOICE_PARSE_SYSTEM, `Extract data from this invoice:\n\n${trimmed}`);
 
   try {
     return JSON.parse(result);

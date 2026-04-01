@@ -30,11 +30,11 @@ import type { DemandLetterContext } from "./ai-scanner";
 const FREE_LIMITS = { contracts: 1, invoices: 1, clients: 2, disputes: 0 };
 
 const SCAN_LIMITS: Record<string, number> = {
-  free: parseInt(process.env.PERPLEXITY_SCANS_FREE || "1"),
-  pro: parseInt(process.env.PERPLEXITY_SCANS_PRO || "10"),
-  enterprise: parseInt(process.env.PERPLEXITY_SCANS_ENTERPRISE || "50"),
+  free: parseInt(process.env.AI_SCANS_FREE || process.env.PERPLEXITY_SCANS_FREE || "1"),
+  pro: parseInt(process.env.AI_SCANS_PRO || process.env.PERPLEXITY_SCANS_PRO || "10"),
+  enterprise: parseInt(process.env.AI_SCANS_ENTERPRISE || process.env.PERPLEXITY_SCANS_ENTERPRISE || "50"),
 };
-const OVERAGE_PRICE = parseInt(process.env.PERPLEXITY_OVERAGE_PRICE || "10");
+const OVERAGE_PRICE = parseInt(process.env.AI_OVERAGE_PRICE || process.env.PERPLEXITY_OVERAGE_PRICE || "10");
 
 // Small claims court info by state
 const COURT_INFO: Record<string, { limit: number; filingFee: string; serviceFee: string; statute: string; lateFeeRate: string; courtName: string; filingUrl: string; notes: string }> = {
