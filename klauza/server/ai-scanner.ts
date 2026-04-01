@@ -27,7 +27,7 @@ async function callClaude(systemPrompt: string, userMessage: string): Promise<st
         },
         body: JSON.stringify({
           model: "claude-haiku-4-5-20251001",
-          max_tokens: 4000,
+          max_tokens: 8000,
           system: systemPrompt,
           messages: [
             { role: "user", content: userMessage },
@@ -97,6 +97,11 @@ Analyze across these 17 categories: Payment Terms, Kill Fee/Cancellation, IP Own
 
 Be specific. Quote actual clauses. Give actionable recommendations. Always suggest adding a kill fee if one is missing.
 
+KEEP IT CONCISE:
+- Each explanation and recommendation should be 1-2 sentences max
+- Suggested clause text should be 2-3 sentences max, not full legal paragraphs
+- Focus on the top 5-8 most important risks, not every possible issue
+
 IMPORTANT: Return ONLY the raw JSON object. Do NOT wrap it in markdown code fences or backticks. Start your response with { and end with }.`;
 
 export async function scanContract(contractText: string): Promise<any> {
@@ -131,7 +136,40 @@ export async function scanContract(contractText: string): Promise<any> {
     }
   } catch (_) {}
 
-  console.error("All JSON parse strategies failed. Response starts with:", result.substring(0, 100));
+  // Strategy 4: truncated JSON repair — close any open brackets/braces
+  try {
+    const firstBrace = result.indexOf("{");
+    if (firstBrace !== -1) {
+      let candidate = result.substring(firstBrace);
+      // Remove trailing code fence if present
+      candidate = candidate.replace(/```\s*$/, "").trim();
+      // Count unclosed brackets and braces, then close them
+      let openBraces = 0;
+      let openBrackets = 0;
+      let inString = false;
+      let escaped = false;
+      for (const ch of candidate) {
+        if (escaped) { escaped = false; continue; }
+        if (ch === '\\') { escaped = true; continue; }
+        if (ch === '"') { inString = !inString; continue; }
+        if (inString) continue;
+        if (ch === '{') openBraces++;
+        if (ch === '}') openBraces--;
+        if (ch === '[') openBrackets++;
+        if (ch === ']') openBrackets--;
+      }
+      // Close any unclosed structures
+      for (let i = 0; i < openBrackets; i++) candidate += "]";
+      for (let i = 0; i < openBraces; i++) candidate += "}";
+      const parsed = JSON.parse(candidate);
+      if (parsed.overallScore !== undefined) {
+        console.log("JSON repair succeeded (closed", openBraces, "braces,", openBrackets, "brackets)");
+        return parsed;
+      }
+    }
+  } catch (_) {}
+
+  console.error("All JSON parse strategies failed. Response length:", result.length, "starts with:", result.substring(0, 100));
   return {
     overallScore: 50,
     riskLevel: "MEDIUM",
