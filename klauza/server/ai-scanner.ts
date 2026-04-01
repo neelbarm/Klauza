@@ -108,13 +108,20 @@ export async function scanContract(contractText: string): Promise<any> {
   } catch (_) {}
 
   try {
-    // Strategy 2: extract JSON block from markdown code fence
-    const fenceMatch = result.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-    if (fenceMatch) return JSON.parse(fenceMatch[1]);
+    // Strategy 2: extract JSON from markdown code fence (greedy match for nested objects)
+    const fenceMatch = result.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (fenceMatch) {
+      const inner = fenceMatch[1].trim();
+      const firstBrace = inner.indexOf("{");
+      const lastBrace = inner.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        return JSON.parse(inner.substring(firstBrace, lastBrace + 1));
+      }
+    }
   } catch (_) {}
 
   try {
-    // Strategy 3: find outermost { ... }
+    // Strategy 3: find outermost { ... } anywhere in the response
     const firstBrace = result.indexOf("{");
     const lastBrace = result.lastIndexOf("}");
     if (firstBrace !== -1 && lastBrace > firstBrace) {
@@ -369,8 +376,13 @@ export async function parseInvoice(invoiceText: string): Promise<any> {
   } catch (_) {}
 
   try {
-    const fenceMatch = result.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-    if (fenceMatch) return JSON.parse(fenceMatch[1]);
+    const fenceMatch = result.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (fenceMatch) {
+      const inner = fenceMatch[1].trim();
+      const fb = inner.indexOf("{");
+      const lb = inner.lastIndexOf("}");
+      if (fb !== -1 && lb > fb) return JSON.parse(inner.substring(fb, lb + 1));
+    }
   } catch (_) {}
 
   try {
