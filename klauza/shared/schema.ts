@@ -1,12 +1,12 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, serial } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // ============================================================================
 // USERS — Authentication and profile
 // ============================================================================
-export const users = sqliteTable("users", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   fullName: text("full_name"),
@@ -19,7 +19,7 @@ export const users = sqliteTable("users", {
   estimatedArr: text("estimated_arr"),
   referralSource: text("referral_source"),
   onboardingComplete: integer("onboarding_complete").default(0),
-  createdAt: text("created_at").default("datetime('now')"),
+  createdAt: text("created_at"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -34,8 +34,8 @@ export type User = typeof users.$inferSelect;
 // ============================================================================
 // CLIENTS — Freelancer's clients
 // ============================================================================
-export const clients = sqliteTable("clients", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const clients = pgTable("clients", {
+  id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   name: text("name").notNull(),
   email: text("email"),
@@ -43,7 +43,7 @@ export const clients = sqliteTable("clients", {
   riskScore: integer("risk_score").default(50), // 0-100
   totalRevenue: integer("total_revenue").default(0), // cents
   status: text("status").default("active"), // active | inactive | flagged
-  createdAt: text("created_at").default("datetime('now')"),
+  createdAt: text("created_at"),
 });
 
 export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true });
@@ -53,8 +53,8 @@ export type Client = typeof clients.$inferSelect;
 // ============================================================================
 // CONTRACTS — Templates engine (PREVENT)
 // ============================================================================
-export const contracts = sqliteTable("contracts", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const contracts = pgTable("contracts", {
+  id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   clientId: integer("client_id"),
   title: text("title").notNull(),
@@ -67,7 +67,7 @@ export const contracts = sqliteTable("contracts", {
   killFeePercent: integer("kill_fee_percent").default(25),
   paymentTerms: text("payment_terms").default("net30"),
   signedAt: text("signed_at"),
-  createdAt: text("created_at").default("datetime('now')"),
+  createdAt: text("created_at"),
 });
 
 export const insertContractSchema = createInsertSchema(contracts).omit({ id: true, createdAt: true });
@@ -77,8 +77,8 @@ export type Contract = typeof contracts.$inferSelect;
 // ============================================================================
 // INVOICES — Payment tracking
 // ============================================================================
-export const invoices = sqliteTable("invoices", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   clientId: integer("client_id").notNull(),
   contractId: integer("contract_id"),
@@ -87,7 +87,7 @@ export const invoices = sqliteTable("invoices", {
   dueDate: text("due_date"),
   paidAt: text("paid_at"),
   description: text("description"),
-  createdAt: text("created_at").default("datetime('now')"),
+  createdAt: text("created_at"),
 });
 
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true });
@@ -97,8 +97,8 @@ export type Invoice = typeof invoices.$inferSelect;
 // ============================================================================
 // DISPUTES — Chase engine (ENFORCE)
 // ============================================================================
-export const disputes = sqliteTable("disputes", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const disputes = pgTable("disputes", {
+  id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
   clientId: integer("client_id").notNull(),
   invoiceId: integer("invoice_id"),
@@ -108,7 +108,7 @@ export const disputes = sqliteTable("disputes", {
   demandLetter: text("demand_letter"), // AI-generated text
   evidence: text("evidence"), // JSON array of evidence descriptions
   resolvedAmount: integer("resolved_amount").default(0), // cents recovered
-  createdAt: text("created_at").default("datetime('now')"),
+  createdAt: text("created_at"),
   resolvedAt: text("resolved_at"),
 });
 
@@ -119,8 +119,8 @@ export type Dispute = typeof disputes.$inferSelect;
 // ============================================================================
 // BLOG POSTS — CMS
 // ============================================================================
-export const blogPosts = sqliteTable("blog_posts", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const blogPosts = pgTable("blog_posts", {
+  id: serial("id").primaryKey(),
   title: text("title").notNull(),
   slug: text("slug").notNull().unique(),
   excerpt: text("excerpt"),
@@ -128,7 +128,7 @@ export const blogPosts = sqliteTable("blog_posts", {
   category: text("category").default("General"),
   published: integer("published").default(0), // 0=draft, 1=published
   authorId: integer("author_id"),
-  createdAt: text("created_at").default("datetime('now')"),
+  createdAt: text("created_at"),
   updatedAt: text("updated_at"),
 });
 

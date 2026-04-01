@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage, db } from "./storage";
 import { users, insertClientSchema, insertContractSchema, insertInvoiceSchema, insertDisputeSchema } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { stripe, PRICES, WEBHOOK_SECRET } from "./stripe";
 import multer from "multer";
 // pdf-parse v2 uses a class-based API: new PDFParse() → .load(buffer) → .getText()
 async function parsePdfBuffer(buffer: Buffer): Promise<string> {
@@ -152,11 +153,11 @@ const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 const upload = multer({ dest: uploadDir, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB max
 
-function checkPlanLimits(req: any, res: any, resource: keyof typeof FREE_LIMITS): boolean {
+async function checkPlanLimits(req: any, res: any, resource: keyof typeof FREE_LIMITS): Promise<boolean> {
   const user = req.user!;
   if (user.plan === 'pro' || user.plan === 'enterprise') return true;
 
-  const usage = storage.getUsageStats(user.id);
+  const usage = await storage.getUsageStats(user.id);
   if (usage[resource] >= FREE_LIMITS[resource]) {
     res.status(403).json({
       error: "upgrade_required",
@@ -178,98 +179,98 @@ function requireAdmin(req: any, res: any): boolean {
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
 
   // ==================== CLIENTS ====================
-  app.get("/api/clients", (req, res) => {
+  app.get("/api/clients", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const list = storage.getClients(req.user!.id);
+    const list = await storage.getClients(req.user!.id);
     res.json(list);
   });
 
-  app.post("/api/clients", (req, res) => {
+  app.post("/api/clients", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    if (!checkPlanLimits(req, res, 'clients')) return;
+    if (!await checkPlanLimits(req, res, 'clients')) return;
     const data = { ...req.body, userId: req.user!.id };
     const parsed = insertClientSchema.safeParse(data);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    const client = storage.createClient(parsed.data);
+    const client = await storage.createClient(parsed.data);
     res.status(201).json(client);
   });
 
-  app.patch("/api/clients/:id", (req, res) => {
+  app.patch("/api/clients/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const updated = storage.updateClient(Number(req.params.id), req.user!.id, req.body);
+    const updated = await storage.updateClient(Number(req.params.id), req.user!.id, req.body);
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(updated);
   });
 
   // ==================== CONTRACTS ====================
-  app.get("/api/contracts", (req, res) => {
+  app.get("/api/contracts", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    res.json(storage.getContracts(req.user!.id));
+    res.json(await storage.getContracts(req.user!.id));
   });
 
-  app.get("/api/contracts/:id", (req, res) => {
+  app.get("/api/contracts/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const contract = storage.getContract(Number(req.params.id), req.user!.id);
+    const contract = await storage.getContract(Number(req.params.id), req.user!.id);
     if (!contract) return res.status(404).json({ error: "Not found" });
     res.json(contract);
   });
 
-  app.post("/api/contracts", (req, res) => {
+  app.post("/api/contracts", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    if (!checkPlanLimits(req, res, 'contracts')) return;
+    if (!await checkPlanLimits(req, res, 'contracts')) return;
     const data = { ...req.body, userId: req.user!.id };
     const parsed = insertContractSchema.safeParse(data);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    const contract = storage.createContract(parsed.data);
+    const contract = await storage.createContract(parsed.data);
     res.status(201).json(contract);
   });
 
-  app.patch("/api/contracts/:id", (req, res) => {
+  app.patch("/api/contracts/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const updated = storage.updateContract(Number(req.params.id), req.user!.id, req.body);
+    const updated = await storage.updateContract(Number(req.params.id), req.user!.id, req.body);
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(updated);
   });
 
   // ==================== INVOICES ====================
-  app.get("/api/invoices", (req, res) => {
+  app.get("/api/invoices", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    res.json(storage.getInvoices(req.user!.id));
+    res.json(await storage.getInvoices(req.user!.id));
   });
 
-  app.post("/api/invoices", (req, res) => {
+  app.post("/api/invoices", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    if (!checkPlanLimits(req, res, 'invoices')) return;
+    if (!await checkPlanLimits(req, res, 'invoices')) return;
     const data = { ...req.body, userId: req.user!.id };
     const parsed = insertInvoiceSchema.safeParse(data);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    const invoice = storage.createInvoice(parsed.data);
+    const invoice = await storage.createInvoice(parsed.data);
     res.status(201).json(invoice);
   });
 
-  app.patch("/api/invoices/:id", (req, res) => {
+  app.patch("/api/invoices/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const updated = storage.updateInvoice(Number(req.params.id), req.user!.id, req.body);
+    const updated = await storage.updateInvoice(Number(req.params.id), req.user!.id, req.body);
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(updated);
   });
 
   // ==================== DISPUTES (CHASE) ====================
-  app.get("/api/disputes", (req, res) => {
+  app.get("/api/disputes", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    res.json(storage.getDisputes(req.user!.id));
+    res.json(await storage.getDisputes(req.user!.id));
   });
 
-  app.get("/api/disputes/:id", (req, res) => {
+  app.get("/api/disputes/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const dispute = storage.getDispute(Number(req.params.id), req.user!.id);
+    const dispute = await storage.getDispute(Number(req.params.id), req.user!.id);
     if (!dispute) return res.status(404).json({ error: "Not found" });
     res.json(dispute);
   });
 
-  app.post("/api/disputes", (req, res) => {
+  app.post("/api/disputes", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    if (!checkPlanLimits(req, res, 'disputes')) return;
+    if (!await checkPlanLimits(req, res, 'disputes')) return;
 
     const { clientId, amount, description, defendantName, defendantEmail, defendantAddress,
             defendantBusinessName, contractId, invoiceId, dueDate, state } = req.body;
@@ -308,21 +309,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     };
     const parsed = insertDisputeSchema.safeParse(data);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
-    const dispute = storage.createDispute(parsed.data);
+    const dispute = await storage.createDispute(parsed.data);
 
     // Update linked invoice status to "disputed"
     if (invoiceId) {
       try {
-        storage.updateInvoice(Number(invoiceId), req.user!.id, { status: "disputed" } as any);
+        await storage.updateInvoice(Number(invoiceId), req.user!.id, { status: "disputed" } as any);
       } catch {}
     }
 
     res.status(201).json(dispute);
   });
 
-  app.patch("/api/disputes/:id", (req, res) => {
+  app.patch("/api/disputes/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const updated = storage.updateDispute(Number(req.params.id), req.user!.id, req.body);
+    const updated = await storage.updateDispute(Number(req.params.id), req.user!.id, req.body);
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(updated);
   });
@@ -624,7 +625,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   // Escalate dispute to next stage
   app.post("/api/disputes/:id/escalate", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const dispute = storage.getDispute(Number(req.params.id), req.user!.id);
+    const dispute = await storage.getDispute(Number(req.params.id), req.user!.id);
     if (!dispute) return res.status(404).json({ error: "Not found" });
     if (dispute.status === "resolved" || dispute.status === "closed") {
       return res.status(400).json({ error: "Cannot escalate a resolved or closed dispute" });
@@ -636,7 +637,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     const nextStage = currentStage + 1;
 
     // Get client name for templates
-    const client = storage.getClient(dispute.clientId, req.user!.id);
+    const client = await storage.getClient(dispute.clientId, req.user!.id);
     const clientName = client?.name || "[CLIENT NAME]";
 
     // Build escalation history
@@ -655,7 +656,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
       let contractText: string | undefined;
       const contractId = evidenceData.contractId;
       if (contractId) {
-        const contract = storage.getContract(contractId, req.user!.id);
+        const contract = await storage.getContract(contractId, req.user!.id);
         if (contract?.content) {
           contractText = contract.content;
         }
@@ -736,7 +737,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
       demandLetter = escalation.body;
     }
 
-    const updated = storage.updateDispute(Number(req.params.id), req.user!.id, {
+    const updated = await storage.updateDispute(Number(req.params.id), req.user!.id, {
       stage: nextStage,
       status: nextStage >= 3 ? "escalated" : "open",
       demandLetter,
@@ -746,9 +747,9 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   });
 
   // Resolve a dispute (client paid)
-  app.post("/api/disputes/:id/resolve", (req, res) => {
+  app.post("/api/disputes/:id/resolve", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const dispute = storage.getDispute(Number(req.params.id), req.user!.id);
+    const dispute = await storage.getDispute(Number(req.params.id), req.user!.id);
     if (!dispute) return res.status(404).json({ error: "Not found" });
     if (dispute.status === "resolved") return res.status(400).json({ error: "Already resolved" });
     if (dispute.status === "closed") return res.status(400).json({ error: "Dispute is closed" });
@@ -763,7 +764,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
       evidenceData.notes = evidenceData.notes ? `${evidenceData.notes}\n\nResolution notes: ${notes}` : `Resolution notes: ${notes}`;
     }
 
-    const updated = storage.updateDispute(Number(req.params.id), req.user!.id, {
+    const updated = await storage.updateDispute(Number(req.params.id), req.user!.id, {
       status: "resolved",
       resolvedAmount: Number(resolvedAmount),
       resolvedAt: new Date().toISOString(),
@@ -772,10 +773,10 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
 
     // Decrease client risk score (they paid)
     if (dispute.clientId) {
-      const client = storage.getClient(dispute.clientId, req.user!.id);
+      const client = await storage.getClient(dispute.clientId, req.user!.id);
       if (client) {
         const newRisk = Math.max(0, (client.riskScore || 50) - 10);
-        storage.updateClient(dispute.clientId, req.user!.id, { riskScore: newRisk });
+        await storage.updateClient(dispute.clientId, req.user!.id, { riskScore: newRisk });
       }
     }
 
@@ -783,9 +784,9 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   });
 
   // Close a dispute without resolution
-  app.post("/api/disputes/:id/close", (req, res) => {
+  app.post("/api/disputes/:id/close", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const dispute = storage.getDispute(Number(req.params.id), req.user!.id);
+    const dispute = await storage.getDispute(Number(req.params.id), req.user!.id);
     if (!dispute) return res.status(404).json({ error: "Not found" });
     if (dispute.status === "resolved") return res.status(400).json({ error: "Cannot close a resolved dispute" });
     if (dispute.status === "closed") return res.status(400).json({ error: "Already closed" });
@@ -795,17 +796,17 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     const evidenceData = parseEvidenceData(dispute.evidence);
     evidenceData.closeReason = reason || "Closed without resolution";
 
-    const updated = storage.updateDispute(Number(req.params.id), req.user!.id, {
+    const updated = await storage.updateDispute(Number(req.params.id), req.user!.id, {
       status: "closed",
       evidence: JSON.stringify(evidenceData),
     });
 
     // Increase client risk score (they didn't pay)
     if (dispute.clientId) {
-      const client = storage.getClient(dispute.clientId, req.user!.id);
+      const client = await storage.getClient(dispute.clientId, req.user!.id);
       if (client) {
         const newRisk = Math.min(100, (client.riskScore || 50) + 15);
-        storage.updateClient(dispute.clientId, req.user!.id, { riskScore: newRisk });
+        await storage.updateClient(dispute.clientId, req.user!.id, { riskScore: newRisk });
       }
     }
 
@@ -813,9 +814,9 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   });
 
   // Get all escalation emails/letters for a dispute
-  app.get("/api/disputes/:id/emails", (req, res) => {
+  app.get("/api/disputes/:id/emails", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const dispute = storage.getDispute(Number(req.params.id), req.user!.id);
+    const dispute = await storage.getDispute(Number(req.params.id), req.user!.id);
     if (!dispute) return res.status(404).json({ error: "Not found" });
 
     const evidenceData = parseEvidenceData(dispute.evidence);
@@ -823,9 +824,9 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   });
 
   // Add evidence to a dispute
-  app.post("/api/disputes/:id/evidence", (req, res) => {
+  app.post("/api/disputes/:id/evidence", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const dispute = storage.getDispute(Number(req.params.id), req.user!.id);
+    const dispute = await storage.getDispute(Number(req.params.id), req.user!.id);
     if (!dispute) return res.status(404).json({ error: "Not found" });
 
     const { type, description: desc, fileName } = req.body;
@@ -839,7 +840,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
       addedAt: new Date().toISOString(),
     });
 
-    const updated = storage.updateDispute(Number(req.params.id), req.user!.id, {
+    const updated = await storage.updateDispute(Number(req.params.id), req.user!.id, {
       evidence: JSON.stringify(evidenceData),
     });
     res.json(updated);
@@ -877,32 +878,194 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   });
 
   // ==================== USAGE & UPGRADE ====================
-  app.get("/api/usage", (req, res) => {
+  app.get("/api/usage", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const usage = storage.getUsageStats(req.user!.id);
+    const usage = await storage.getUsageStats(req.user!.id);
     const limits = req.user!.plan === 'pro' || req.user!.plan === 'enterprise'
       ? { contracts: Infinity, invoices: Infinity, clients: Infinity, disputes: Infinity }
       : FREE_LIMITS;
     res.json({ usage, limits, plan: req.user!.plan });
   });
 
-  app.post("/api/upgrade", (req, res) => {
+  app.post("/api/upgrade", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const updated = storage.updateUserPlan(req.user!.id, "pro");
+    const { plan } = req.body;
+    const targetPlan = plan === "enterprise" ? "enterprise" : "pro";
+    const priceId = PRICES[targetPlan];
+
+    // If Stripe is configured and we have a price ID, create a checkout session
+    if (stripe && priceId) {
+      try {
+        const user = req.user!;
+        // Get or create Stripe customer
+        let customerId = (user as any).stripeCustomerId;
+        if (!customerId) {
+          const customer = await stripe.customers.create({
+            email: (user as any).email || undefined,
+            metadata: { userId: String(user.id), username: user.username },
+          });
+          customerId = customer.id;
+          await storage.updateUserProfile(user.id, { stripeCustomerId: customerId });
+        }
+
+        const session = await stripe.checkout.sessions.create({
+          customer: customerId,
+          mode: "subscription",
+          line_items: [{ price: priceId, quantity: 1 }],
+          success_url: `${req.headers.origin || req.protocol + "://" + req.get("host")}/dashboard?upgraded=${targetPlan}`,
+          cancel_url: `${req.headers.origin || req.protocol + "://" + req.get("host")}/dashboard?upgrade_cancelled=true`,
+          metadata: { userId: String(user.id), plan: targetPlan },
+        });
+
+        return res.json({ redirect: true, url: session.url });
+      } catch (err: any) {
+        console.error("Stripe checkout error:", err);
+        return res.status(500).json({ error: "Failed to create checkout session" });
+      }
+    }
+
+    // Fallback: instant upgrade when Stripe is not configured (dev mode)
+    const updated = await storage.updateUserPlan(req.user!.id, targetPlan);
     res.json(updated);
   });
 
+  // ==================== STRIPE ====================
+  app.post("/api/create-checkout-session", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    if (!stripe) return res.status(501).json({ error: "Stripe not configured" });
+
+    const { plan } = req.body;
+    const targetPlan = plan === "enterprise" ? "enterprise" : "pro";
+    const priceId = PRICES[targetPlan];
+    if (!priceId) return res.status(400).json({ error: "No price configured for this plan" });
+
+    try {
+      const user = req.user!;
+      let customerId = (user as any).stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: (user as any).email || undefined,
+          metadata: { userId: String(user.id), username: user.username },
+        });
+        customerId = customer.id;
+        await storage.updateUserProfile(user.id, { stripeCustomerId: customerId });
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: "subscription",
+        line_items: [{ price: priceId, quantity: 1 }],
+        success_url: `${req.headers.origin || req.protocol + "://" + req.get("host")}/dashboard?upgraded=${targetPlan}`,
+        cancel_url: `${req.headers.origin || req.protocol + "://" + req.get("host")}/dashboard?upgrade_cancelled=true`,
+        metadata: { userId: String(user.id), plan: targetPlan },
+      });
+
+      res.json({ url: session.url });
+    } catch (err: any) {
+      console.error("Stripe checkout error:", err);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  app.post("/api/stripe-webhook", async (req: any, res) => {
+    if (!stripe || !WEBHOOK_SECRET) return res.status(501).json({ error: "Stripe not configured" });
+
+    const sig = req.headers["stripe-signature"];
+    let event: any;
+
+    try {
+      event = stripe.webhooks.constructEvent(req.rawBody, sig, WEBHOOK_SECRET);
+    } catch (err: any) {
+      console.error("Webhook signature verification failed:", err.message);
+      return res.status(400).json({ error: "Webhook signature verification failed" });
+    }
+
+    try {
+      switch (event.type) {
+        case "checkout.session.completed": {
+          const session = event.data.object;
+          const userId = Number(session.metadata?.userId);
+          const plan = session.metadata?.plan || "pro";
+          if (userId) {
+            await storage.updateUserProfile(userId, {
+              plan,
+              stripeCustomerId: session.customer,
+              stripeSubscriptionId: session.subscription,
+            });
+            console.log(`✅ Stripe: User ${userId} upgraded to ${plan}`);
+          }
+          break;
+        }
+        case "customer.subscription.updated": {
+          const subscription = event.data.object;
+          const customerId = subscription.customer;
+          // Find user by Stripe customer ID
+          const allUsers = await storage.getAllUsers();
+          const user = allUsers.find((u: any) => u.stripeCustomerId === customerId);
+          if (user) {
+            const status = subscription.status;
+            if (status === "active") {
+              // Subscription is active — keep current plan
+              await storage.updateUserProfile(user.id, { stripeSubscriptionId: subscription.id });
+            } else if (status === "past_due" || status === "unpaid") {
+              // Subscription payment failed — keep plan but log
+              console.warn(`⚠️ Stripe: User ${user.id} subscription ${status}`);
+            }
+          }
+          break;
+        }
+        case "customer.subscription.deleted": {
+          const subscription = event.data.object;
+          const customerId = subscription.customer;
+          const allUsers = await storage.getAllUsers();
+          const user = allUsers.find((u: any) => u.stripeCustomerId === customerId);
+          if (user) {
+            await storage.updateUserProfile(user.id, {
+              plan: "free",
+              stripeSubscriptionId: null,
+            });
+            console.log(`⬇️ Stripe: User ${user.id} downgraded to free (subscription cancelled)`);
+          }
+          break;
+        }
+      }
+    } catch (err) {
+      console.error("Webhook handler error:", err);
+    }
+
+    res.json({ received: true });
+  });
+
+  app.post("/api/create-portal-session", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    if (!stripe) return res.status(501).json({ error: "Stripe not configured" });
+
+    const customerId = (req.user as any)?.stripeCustomerId;
+    if (!customerId) return res.status(400).json({ error: "No billing account found" });
+
+    try {
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${req.headers.origin || req.protocol + "://" + req.get("host")}/dashboard`,
+      });
+      res.json({ url: session.url });
+    } catch (err: any) {
+      console.error("Portal session error:", err);
+      res.status(500).json({ error: "Failed to create billing portal session" });
+    }
+  });
+
   // ==================== ADMIN ====================
-  app.get("/api/admin/users", (req, res) => {
+  app.get("/api/admin/users", async (req, res) => {
     if (!requireAdmin(req, res)) return;
-    const allUsers = storage.getAllUsers();
+    const allUsers = await storage.getAllUsers();
     const safe = allUsers.map(u => ({ ...u, password: undefined }));
     res.json(safe);
   });
 
-  app.get("/api/admin/stats", (req, res) => {
+  app.get("/api/admin/stats", async (req, res) => {
     if (!requireAdmin(req, res)) return;
-    const allUsers = storage.getAllUsers();
+    const allUsers = await storage.getAllUsers();
     // Exclude admin-role accounts from customer metrics
     const customers = allUsers.filter(u => u.role !== 'admin');
     const proUsers = customers.filter(u => u.plan === 'pro');
@@ -923,33 +1086,33 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     });
   });
 
-  app.patch("/api/admin/users/:id/plan", (req, res) => {
+  app.patch("/api/admin/users/:id/plan", async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const { plan } = req.body;
     if (!['free', 'pro', 'enterprise'].includes(plan)) return res.status(400).json({ error: "Invalid plan" });
-    const updated = storage.updateUserPlan(Number(req.params.id), plan);
+    const updated = await storage.updateUserPlan(Number(req.params.id), plan);
     if (!updated) return res.status(404).json({ error: "User not found" });
     res.json({ ...updated, password: undefined });
   });
 
-  app.patch("/api/admin/users/:id/role", (req, res) => {
+  app.patch("/api/admin/users/:id/role", async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const { role } = req.body;
     if (!['user', 'admin'].includes(role)) return res.status(400).json({ error: "Invalid role" });
-    const updated = storage.updateUserRole(Number(req.params.id), role);
+    const updated = await storage.updateUserRole(Number(req.params.id), role);
     if (!updated) return res.status(404).json({ error: "User not found" });
     res.json({ ...updated, password: undefined });
   });
 
-  app.delete("/api/admin/users/:id", (req, res) => {
+  app.delete("/api/admin/users/:id", async (req, res) => {
     if (!requireAdmin(req, res)) return;
     if (Number(req.params.id) === req.user!.id) return res.status(400).json({ error: "Cannot delete yourself" });
-    storage.deleteUser(Number(req.params.id));
+    await storage.deleteUser(Number(req.params.id));
     res.json({ success: true });
   });
 
   // ==================== ONBOARDING ====================
-  app.post("/api/onboarding", (req, res) => {
+  app.post("/api/onboarding", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
     const { businessName, estimatedArr, referralSource, plan, jurisdiction } = req.body;
 
@@ -963,7 +1126,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     const validJurisdictions = ['US', 'UK', 'CA', 'NG', 'EU', 'AU', 'IN', 'ZA', 'OTHER'];
     const userJurisdiction = jurisdiction && validJurisdictions.includes(jurisdiction) ? jurisdiction : 'US';
 
-    const updated = storage.updateUserProfile(req.user!.id, {
+    const updated = await storage.updateUserProfile(req.user!.id, {
       businessName,
       estimatedArr,
       referralSource,
@@ -976,59 +1139,61 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   });
 
   // ==================== BLOG (PUBLIC) ====================
-  app.get("/api/blog", (_req, res) => {
-    const posts = storage.getBlogPosts(true);
+  app.get("/api/blog", async (_req, res) => {
+    const posts = await storage.getBlogPosts(true);
     res.json(posts);
   });
 
-  app.get("/api/blog/:slug", (req, res) => {
-    const post = storage.getBlogPost(req.params.slug);
+  app.get("/api/blog/:slug", async (req, res) => {
+    const post = await storage.getBlogPost(req.params.slug);
     if (!post || !post.published) return res.status(404).json({ error: "Post not found" });
     res.json(post);
   });
 
   // ==================== ADMIN BLOG CRUD ====================
-  app.get("/api/admin/blog", (req, res) => {
+  app.get("/api/admin/blog", async (req, res) => {
     if (!requireAdmin(req, res)) return;
-    res.json(storage.getBlogPosts(false));
+    res.json(await storage.getBlogPosts(false));
   });
 
-  app.post("/api/admin/blog", (req, res) => {
+  app.post("/api/admin/blog", async (req, res) => {
     if (!requireAdmin(req, res)) return;
     const { title, content, excerpt, category, published } = req.body;
     if (!title || !content) return res.status(400).json({ error: "Title and content required" });
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const post = storage.createBlogPost({ title, slug, content, excerpt: excerpt || '', category: category || 'General', published: published ? 1 : 0, authorId: req.user!.id });
+    const post = await storage.createBlogPost({ title, slug, content, excerpt: excerpt || '', category: category || 'General', published: published ? 1 : 0, authorId: req.user!.id });
     res.status(201).json(post);
   });
 
-  app.patch("/api/admin/blog/:id", (req, res) => {
+  app.patch("/api/admin/blog/:id", async (req, res) => {
     if (!requireAdmin(req, res)) return;
-    const existing = storage.getBlogPostById(Number(req.params.id));
+    const existing = await storage.getBlogPostById(Number(req.params.id));
     if (!existing) return res.status(404).json({ error: "Not found" });
     const data: any = { ...req.body };
     if (data.title) {
       data.slug = data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     }
-    const updated = storage.updateBlogPost(Number(req.params.id), data);
+    const updated = await storage.updateBlogPost(Number(req.params.id), data);
     res.json(updated);
   });
 
-  app.delete("/api/admin/blog/:id", (req, res) => {
+  app.delete("/api/admin/blog/:id", async (req, res) => {
     if (!requireAdmin(req, res)) return;
-    storage.deleteBlogPost(Number(req.params.id));
+    await storage.deleteBlogPost(Number(req.params.id));
     res.json({ success: true });
   });
 
   // ==================== DASHBOARD STATS ====================
-  app.get("/api/dashboard", (req, res) => {
+  app.get("/api/dashboard", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
     const userId = req.user!.id;
 
-    const allContracts = storage.getContracts(userId);
-    const allInvoices = storage.getInvoices(userId);
-    const allDisputes = storage.getDisputes(userId);
-    const allClients = storage.getClients(userId);
+    const [allContracts, allInvoices, allDisputes, allClients] = await Promise.all([
+      storage.getContracts(userId),
+      storage.getInvoices(userId),
+      storage.getDisputes(userId),
+      storage.getClients(userId),
+    ]);
 
     const totalRevenue = allInvoices.filter(i => i.status === "paid").reduce((s, i) => s + i.amount, 0);
     const pendingRevenue = allInvoices.filter(i => i.status === "sent" || i.status === "overdue").reduce((s, i) => s + i.amount, 0);
@@ -1055,21 +1220,21 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   });
 
   // ==================== SCAN RESULTS (save/retrieve) ====================
-  app.post("/api/contracts/:id/scan-results", (req: any, res: any) => {
+  app.post("/api/contracts/:id/scan-results", async (req: any, res: any) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const contract = storage.getContract(Number(req.params.id), req.user!.id);
+    const contract = await storage.getContract(Number(req.params.id), req.user!.id);
     if (!contract) return res.status(404).json({ error: "Contract not found" });
     const { scanResults } = req.body;
     if (!scanResults) return res.status(400).json({ error: "scanResults is required" });
-    const updated = storage.updateContract(Number(req.params.id), req.user!.id, {
+    const updated = await storage.updateContract(Number(req.params.id), req.user!.id, {
       content: JSON.stringify(scanResults),
     });
     res.json(updated);
   });
 
-  app.get("/api/contracts/:id/scan-results", (req: any, res: any) => {
+  app.get("/api/contracts/:id/scan-results", async (req: any, res: any) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    const contract = storage.getContract(Number(req.params.id), req.user!.id);
+    const contract = await storage.getContract(Number(req.params.id), req.user!.id);
     if (!contract) return res.status(404).json({ error: "Contract not found" });
     let scanResults = null;
     if (contract.content) {
@@ -1081,18 +1246,18 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
   // ==================== SCAN USAGE & LIMITS ====================
 
   // Helper: auto-reset scan usage if reset date has passed
-  function autoResetScans(userId: number) {
-    const usage = storage.getScanUsage(userId);
+  async function autoResetScans(userId: number) {
+    const usage = await storage.getScanUsage(userId);
     if (!usage.resetDate || new Date(usage.resetDate) <= new Date()) {
-      storage.resetScanUsage(userId);
+      await storage.resetScanUsage(userId);
     }
   }
 
   // Helper: check scan limits, returns error response object or null if OK
-  function checkScanLimits(req: any): { status: number; body: any } | null {
+  async function checkScanLimits(req: any): Promise<{ status: number; body: any } | null> {
     const userId = req.user!.id;
-    autoResetScans(userId);
-    const usage = storage.getScanUsage(userId);
+    await autoResetScans(userId);
+    const usage = await storage.getScanUsage(userId);
     const plan = usage.plan || "free";
     const limit = SCAN_LIMITS[plan] ?? 0;
 
@@ -1120,10 +1285,10 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
     return null; // OK to proceed
   }
 
-  app.get("/api/scan-usage", (req, res) => {
+  app.get("/api/scan-usage", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
-    autoResetScans(req.user!.id);
-    const usage = storage.getScanUsage(req.user!.id);
+    await autoResetScans(req.user!.id);
+    const usage = await storage.getScanUsage(req.user!.id);
     const plan = usage.plan || "free";
     const limit = SCAN_LIMITS[plan] ?? 0;
     res.json({
@@ -1142,7 +1307,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
 
     // Check scan limits (skip if overage=true is sent from frontend)
     if (!req.body.overage) {
-      const limitError = checkScanLimits(req);
+      const limitError = await checkScanLimits(req);
       if (limitError) return res.status(limitError.status).json(limitError.body);
     }
 
@@ -1173,9 +1338,9 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
         return res.status(400).json({ error: "Contract text is too short to analyze." });
       }
 
-      storage.incrementScanUsage(req.user!.id);
+      await storage.incrementScanUsage(req.user!.id);
       const analysis = await scanContract(contractText);
-      const contract = storage.createContract({
+      const contract = await storage.createContract({
         userId: req.user!.id,
         title: fileName,
         type: "sow",
@@ -1197,7 +1362,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
 
     // Check scan limits (skip if overage=true is sent from frontend)
     if (!req.body.overage) {
-      const limitError = checkScanLimits(req);
+      const limitError = await checkScanLimits(req);
       if (limitError) return res.status(limitError.status).json(limitError.body);
     }
 
@@ -1232,7 +1397,7 @@ NOTE: Klauza provides this checklist for informational purposes only. This is no
         return res.status(400).json({ error: "Contract text is too short to analyze. Please upload a valid contract." });
       }
 
-      storage.incrementScanUsage(req.user!.id);
+      await storage.incrementScanUsage(req.user!.id);
       const analysis = await scanContract(contractText);
       res.json({ analysis, textLength: contractText.length });
     } catch (error: any) {
@@ -1311,13 +1476,13 @@ Include all standard protections: kill fee, IP clause, payment terms (Net 30), r
   });
 
   // Create default admin account if no admin exists
-  const existingAdmin = storage.getUserByUsername("admin");
+  const existingAdmin = await storage.getUserByUsername("admin");
   if (!existingAdmin) {
     const { scryptSync, randomBytes } = await import("crypto");
     const salt = randomBytes(16).toString("hex");
     const hash = scryptSync("klauza-admin-2026", salt, 64).toString("hex");
-    const admin = storage.createUser({ username: "admin", password: `${hash}.${salt}`, fullName: "Klauza Admin" });
-    db.update(users).set({ role: "admin", plan: "enterprise" }).where(eq(users.id, admin.id)).run();
+    const admin = await storage.createUser({ username: "admin", password: `${hash}.${salt}`, fullName: "Klauza Admin" });
+    await db.update(users).set({ role: "admin", plan: "enterprise" }).where(eq(users.id, admin.id));
     console.log("✅ Default admin created: username=admin password=klauza-admin-2026");
   }
 

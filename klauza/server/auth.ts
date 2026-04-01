@@ -51,7 +51,7 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        const user = storage.getUserByUsername(username);
+        const user = await storage.getUserByUsername(username);
         if (!user) return done(null, false, { message: "Invalid credentials" });
         const valid = await comparePasswords(password, user.password);
         if (!valid) return done(null, false, { message: "Invalid credentials" });
@@ -66,9 +66,9 @@ export function setupAuth(app: Express) {
     done(null, user.id);
   });
 
-  passport.deserializeUser((id: number, done) => {
+  passport.deserializeUser(async (id: number, done) => {
     try {
-      const user = storage.getUser(id);
+      const user = await storage.getUser(id);
       done(null, user || undefined);
     } catch (err) {
       done(err);
@@ -82,12 +82,12 @@ export function setupAuth(app: Express) {
       if (!username || !password) {
         return res.status(400).json({ error: "Username and password required" });
       }
-      const existing = storage.getUserByUsername(username);
+      const existing = await storage.getUserByUsername(username);
       if (existing) {
         return res.status(400).json({ error: "Username already exists" });
       }
       const hashedPassword = await hashPassword(password);
-      const user = storage.createUser({ username, password: hashedPassword, fullName });
+      const user = await storage.createUser({ username, password: hashedPassword, fullName });
       req.login(user, (err) => {
         if (err) return next(err);
         const { password: _, ...safeUser } = user;

@@ -174,8 +174,21 @@ export default function AuthPage() {
       const res = await apiRequest("POST", "/api/onboarding", data);
       return await res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       queryClient.setQueryData(["/api/user"], data);
+      // If user chose a paid plan, redirect to Stripe checkout
+      if (selectedPlan === "pro" || selectedPlan === "enterprise") {
+        try {
+          const res = await apiRequest("POST", "/api/create-checkout-session", { plan: selectedPlan });
+          const result = await res.json();
+          if (result.url) {
+            window.location.href = result.url;
+            return;
+          }
+        } catch (err) {
+          // Stripe not configured — fall through to dashboard
+        }
+      }
     },
     onError: (err: any) => {
       toast({ title: "Error", description: err.message || "Could not complete onboarding", variant: "destructive" });

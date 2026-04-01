@@ -7,10 +7,14 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 export function UpgradePrompt({ feature, current, limit }: { feature: string; current: number; limit: number }) {
   const upgradeMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/upgrade");
+      const res = await apiRequest("POST", "/api/upgrade", { plan: "pro" });
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      if (data.redirect && data.url) {
+        window.location.href = data.url;
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       queryClient.invalidateQueries({ queryKey: ["/api/usage"] });
     },
