@@ -116,10 +116,8 @@ function BrandPanel() {
 
 function Logo() {
   return (
-    <div className="flex items-center justify-center gap-2 mb-6">
-      <div className="w-8 h-8 rounded bg-primary flex items-center justify-center">
-        <span className="text-primary-foreground font-bold text-sm">K</span>
-      </div>
+    <div className="flex items-center justify-center gap-2.5 mb-6">
+      <img src="/klauza-logo.png" alt="Klauza" className="w-9 h-9 object-contain" />
       <span className="font-display text-sm tracking-[0.25em]">KLAUZA</span>
     </div>
   );
