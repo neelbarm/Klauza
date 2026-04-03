@@ -43,15 +43,22 @@ function Navbar() {
     setMobileOpen(false);
   };
 
+  const toggleMenu = () => {
+    setMobileOpen(prev => !prev);
+  };
+
   return (
-    <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-14">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-xs">K</span>
-          </div>
-          <span className="font-display text-sm tracking-[0.3em] text-foreground">K L A U Z A</span>
-        </div>
+    <nav className="fixed top-0 w-full z-50 bg-background/95 backdrop-blur-md border-b border-border">
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 h-14">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2.5 shrink-0">
+          <img
+            src="/klauza-logo.png"
+            alt="Klauza"
+            className="w-8 h-8 object-contain"
+          />
+          <span className="font-display text-sm tracking-[0.25em] text-foreground">KLAUZA</span>
+        </Link>
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-8">
@@ -78,42 +85,40 @@ function Navbar() {
           </Link>
         </div>
 
-        {/* Mobile right */}
-        <div className="flex md:hidden items-center gap-3">
-          <Link href="/auth">
-            <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-xs px-4 h-8">
-              <Shield className="mr-1 h-3 w-3" /> Protect
-            </Button>
-          </Link>
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="p-1.5 rounded-md hover:bg-muted transition-colors"
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <XIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
+        {/* Mobile: hamburger only */}
+        <button
+          type="button"
+          onClick={toggleMenu}
+          className="md:hidden flex items-center justify-center w-9 h-9 rounded-md hover:bg-muted transition-colors"
+          aria-label="Toggle navigation menu"
+          aria-expanded={mobileOpen}
+        >
+          {mobileOpen
+            ? <XIcon className="h-5 w-5 text-foreground" />
+            : <Menu className="h-5 w-5 text-foreground" />}
+        </button>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu — full dropdown */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-md">
-          <div className="px-6 py-4 space-y-1">
+        <div className="md:hidden bg-background border-t border-border shadow-lg">
+          <div className="px-5 py-4 space-y-1">
             {navLinks.map((link) => (
               <button
                 key={link.id}
+                type="button"
                 onClick={() => scrollTo(link.id)}
-                className="block w-full text-left py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center w-full text-left px-3 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
               >
                 {link.label}
               </button>
             ))}
-            <div className="pt-3 border-t border-border mt-2">
-              <Link href="/auth" className="block py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <div className="pt-3 mt-1 border-t border-border space-y-2">
+              <Link href="/auth" onClick={() => setMobileOpen(false)} className="flex items-center px-3 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors">
                 Sign In
               </Link>
-              <Link href="/auth" className="block mt-1">
-                <Button className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm h-10">
+              <Link href="/auth" onClick={() => setMobileOpen(false)}>
+                <Button className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 text-sm h-11">
                   <Shield className="mr-2 h-4 w-4" /> Get Protected
                 </Button>
               </Link>
@@ -814,10 +819,8 @@ function Footer() {
     <footer className="py-12 px-6 border-t border-border">
       <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
         <div>
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-5 h-5 rounded bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-[10px]">K</span>
-            </div>
+          <div className="flex items-center gap-2.5 mb-4">
+            <img src="/klauza-logo.png" alt="Klauza" className="w-7 h-7 object-contain" />
             <span className="font-display text-xs tracking-[0.2em]">KLAUZA</span>
           </div>
           <p className="text-xs text-muted-foreground">AI-powered protection<br />for freelancers.</p>
