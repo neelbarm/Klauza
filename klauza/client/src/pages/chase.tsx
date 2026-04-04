@@ -209,13 +209,7 @@ function EscalationHistory({ escalations }: { escalations: any[] }) {
                     <Copy className="h-2.5 w-2.5 mr-1" /> Copy
                   </Button>
                 </div>
-                {esc.type === "demand_letter" ? (
-                  <FormalLetterLayout text={esc.body} />
-                ) : (
-                  <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed max-h-72 overflow-y-auto">
-                    {esc.body}
-                  </pre>
-                )}
+                <LetterRenderer text={esc.body} />
               </div>
             )}
           </div>
@@ -225,38 +219,154 @@ function EscalationHistory({ escalations }: { escalations: any[] }) {
   );
 }
 
-// Formal letter layout for demand letters
-function FormalLetterLayout({ text }: { text: string }) {
+// ─── Markdown → React renderer ──────────────────────────────────────────────
+// Handles: **bold**, *italic*, `code`, - bullets, 1. numbered, # headings,
+// ---, ___ signatures, all-caps section labels, and plain paragraphs.
+function renderMarkdownLine(text: string, key: number): React.ReactNode {
+  // Split on **bold**, *italic*, `code` spans
+  const parts: React.ReactNode[] = [];
+  const regex = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`/g;
+  let last = 0;
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    if (m[1] !== undefined) parts.push(<strong key={m.index}>{m[1]}</strong>);
+    else if (m[2] !== undefined) parts.push(<em key={m.index}>{m[2]}</em>);
+    else if (m[3] !== undefined) parts.push(<code key={m.index} className="bg-gray-100 px-1 rounded text-[11px] font-mono">{m[3]}</code>);
+    last = regex.lastIndex;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts.length === 1 && typeof parts[0] === "string" ? text : <>{parts}</>;
+}
+
+function LetterRenderer({ text, className }: { text: string; className?: string }) {
+  const lines = text.split("\n");
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const raw = lines[i];
+    const trimmed = raw.trim();
+
+    // Skip empty — add spacing
+    if (!trimmed) {
+      nodes.push(<div key={i} className="h-2" />);
+      i++;
+      continue;
+    }
+
+    // Dividers
+    if (/^[-=_]{3,}$/.test(trimmed)) {
+      nodes.push(<hr key={i} className="border-border my-3" />);
+      i++;
+      continue;
+    }
+
+    // Signature blank line
+    if (trimmed.startsWith("___")) {
+      nodes.push(<div key={i} className="border-b border-gray-400 w-48 mt-6 mb-2" />);
+      i++;
+      continue;
+    }
+
+    // ATX Headings  ## Heading
+    const headingMatch = trimmed.match(/^(#{1,4})\s+(.+)/);
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      const sizeClass = level === 1 ? "text-sm font-bold" : level === 2 ? "text-xs font-bold uppercase tracking-wide" : "text-xs font-semibold";
+      nodes.push(
+        <p key={i} className={`${sizeClass} text-foreground mt-4 mb-1`}>
+          {renderMarkdownLine(headingMatch[2], i)}
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    // Collect bullet list block
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      const items: React.ReactNode[] = [];
+      while (i < lines.length && (lines[i].trim().startsWith("- ") || lines[i].trim().startsWith("* "))) {
+        const content = lines[i].trim().replace(/^[-*]\s+/, "");
+        items.push(
+          <li key={i} className="text-xs text-foreground/80 leading-relaxed mb-0.5">
+            {renderMarkdownLine(content, i)}
+          </li>
+        );
+        i++;
+      }
+      nodes.push(<ul key={`ul-${i}`} className="list-disc list-inside space-y-0.5 my-2 pl-1">{items}</ul>);
+      continue;
+    }
+
+    // Numbered list block
+    if (/^\d+\.\s/.test(trimmed)) {
+      const items: React.ReactNode[] = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+        const content = lines[i].trim().replace(/^\d+\.\s+/, "");
+        items.push(
+          <li key={i} className="text-xs text-foreground/80 leading-relaxed mb-0.5">
+            {renderMarkdownLine(content, i)}
+          </li>
+        );
+        i++;
+      }
+      nodes.push(<ol key={`ol-${i}`} className="list-decimal list-inside space-y-0.5 my-2 pl-1">{items}</ol>);
+      continue;
+    }
+
+    // All-caps section label (e.g. INVOICE DETAILS:)
+    if (trimmed === trimmed.toUpperCase() && trimmed.length > 3 && /[A-Z]/.test(trimmed)) {
+      nodes.push(
+        <p key={i} className="text-[11px] font-bold uppercase tracking-wider text-foreground mt-3 mb-1">
+          {trimmed.replace(/:$/, "")}
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    // Subject line
+    if (trimmed.toLowerCase().startsWith("subject:")) {
+      nodes.push(
+        <p key={i} className="text-xs font-semibold text-foreground mb-2">
+          {renderMarkdownLine(trimmed, i)}
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    // RE: / Dear lines
+    if (trimmed.startsWith("RE:") || trimmed.startsWith("Dear ") || trimmed.startsWith("To:") || trimmed.startsWith("From:")) {
+      nodes.push(
+        <p key={i} className="text-xs font-medium text-foreground mb-1.5">
+          {renderMarkdownLine(trimmed, i)}
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    // Regular paragraph
+    nodes.push(
+      <p key={i} className="text-xs text-foreground/80 leading-relaxed mb-1.5">
+        {renderMarkdownLine(trimmed, i)}
+      </p>
+    );
+    i++;
+  }
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 sm:p-8 max-h-[500px] overflow-y-auto">
-      <div className="max-w-[600px] mx-auto font-serif">
-        {text.split("\n").map((line, i) => {
-          const trimmed = line.trim();
-          // Bold headings (all caps lines or lines ending with colon)
-          if (trimmed === trimmed.toUpperCase() && trimmed.length > 3 && !trimmed.startsWith("[") && !trimmed.startsWith("-")) {
-            return <p key={i} className="text-xs font-bold text-gray-900 mt-3 mb-1 tracking-wide">{trimmed}</p>;
-          }
-          // Section dividers
-          if (trimmed.startsWith("---") || trimmed.startsWith("===")) {
-            return <hr key={i} className="border-gray-300 my-3" />;
-          }
-          // Signature line
-          if (trimmed.startsWith("____")) {
-            return <div key={i} className="border-b border-gray-400 w-48 mt-6 mb-2" />;
-          }
-          // Numbered items
-          if (/^\d+\./.test(trimmed)) {
-            return <p key={i} className="text-xs text-gray-700 ml-4 mb-1 leading-relaxed">{trimmed}</p>;
-          }
-          // Empty lines
-          if (!trimmed) {
-            return <div key={i} className="h-2" />;
-          }
-          return <p key={i} className="text-xs text-gray-700 leading-relaxed mb-0.5">{line}</p>;
-        })}
-      </div>
+    <div className={className ?? "bg-card border border-border rounded-lg p-4 sm:p-5 max-h-[460px] overflow-y-auto space-y-0"}>
+      {nodes}
     </div>
   );
+}
+
+// Keep FormalLetterLayout as alias for demand letters (same renderer, slightly different style)
+function FormalLetterLayout({ text }: { text: string }) {
+  return <LetterRenderer text={text} className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 sm:p-7 max-h-[500px] overflow-y-auto" />;
 }
 
 // Stats bar
@@ -1108,13 +1218,7 @@ function DisputeCard({ dispute, clientName }: { dispute: Dispute; clientName: st
                         </DialogTitle>
                       </DialogHeader>
                       <div className="mt-2">
-                        {currentEscalation?.type === "demand_letter" ? (
-                          <FormalLetterLayout text={currentEscalation.body} />
-                        ) : (
-                          <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed p-4 bg-muted rounded-lg">
-                            {currentEscalation?.body || dispute.demandLetter}
-                          </pre>
-                        )}
+                        <LetterRenderer text={currentEscalation?.body || dispute.demandLetter || ""} />
                       </div>
                       <DialogFooter>
                         <Button
@@ -1334,7 +1438,7 @@ function DisputeCard({ dispute, clientName }: { dispute: Dispute; clientName: st
                 <Copy className="h-2.5 w-2.5 mr-1" /> Copy
               </Button>
             </div>
-            <FormalLetterLayout text={dispute.demandLetter} />
+            <LetterRenderer text={dispute.demandLetter} />
           </div>
         )}
 

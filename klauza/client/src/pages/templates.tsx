@@ -145,7 +145,7 @@ function SuggestedClause({ clause }: { clause: { name: string; text: string; rea
         </div>
         <p className="text-xs text-muted-foreground mt-1">{clause.reason}</p>
         {expanded && (
-          <div className="mt-3 p-3 bg-muted rounded text-xs font-mono leading-relaxed whitespace-pre-wrap">
+          <div className="mt-3 p-3 bg-muted/60 rounded-md border border-border text-xs text-foreground/80 leading-relaxed">
             {clause.text}
           </div>
         )}
@@ -388,8 +388,11 @@ function ScanResultsView({ scanResult, onClose }: { scanResult: any; onClose?: (
       {/* Raw analysis fallback */}
       {scanResult.rawAnalysis && (
         <Card className="border-border">
-          <CardContent className="p-4">
-            <p className="text-xs font-mono whitespace-pre-wrap text-muted-foreground">{scanResult.rawAnalysis}</p>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Full Analysis</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{scanResult.rawAnalysis}</p>
           </CardContent>
         </Card>
       )}
@@ -653,7 +656,7 @@ function ScanContractTab() {
               onChange={(e) => { setPastedText(e.target.value); if (e.target.value) setFile(null); }}
               placeholder="Paste your contract text here..."
               rows={8}
-              className="font-mono text-xs"
+              className="text-xs leading-relaxed"
             />
 
             {scanError && (
@@ -772,7 +775,7 @@ function ScanContractTab() {
                         value={generatedContract}
                         readOnly
                         rows={20}
-                        className="font-mono text-xs"
+                        className="text-xs leading-relaxed"
                       />
                       <Button variant="outline" onClick={() => setGeneratedContract("")} className="w-full">
                         Generate Another
@@ -908,7 +911,7 @@ function GenerateContractTab() {
               value={generatedContract}
               readOnly
               rows={28}
-              className="font-mono text-xs"
+              className="text-xs leading-relaxed"
             />
           </CardContent>
         </Card>
