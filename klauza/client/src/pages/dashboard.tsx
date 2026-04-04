@@ -269,7 +269,16 @@ export default function DashboardPage() {
                       <p className="text-sm font-medium">{client.name}</p>
                       <p className="text-xs text-muted-foreground">{client.company || "No company"}</p>
                     </div>
-                    <Badge variant="destructive" className="text-[10px]" data-testid={`badge-risk-${client.id}`}>
+                    <Badge
+                      className={`text-[10px] ${
+                        (client.riskScore || 50) >= 70
+                          ? "bg-red-100 text-red-700 border border-red-200"
+                          : (client.riskScore || 50) >= 40
+                          ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
+                          : "bg-green-100 text-green-700 border border-green-200"
+                      }`}
+                      data-testid={`badge-risk-${client.id}`}
+                    >
                       Risk: {client.riskScore}
                     </Badge>
                   </div>

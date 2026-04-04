@@ -34,6 +34,17 @@ function formatCurrency(cents: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
+function statusBadgeClass(status: string | null): string {
+  switch (status) {
+    case "paid": return "bg-green-100 text-green-700 border border-green-200";
+    case "overdue": return "bg-red-100 text-red-700 border border-red-200";
+    case "disputed": return "bg-red-50 text-red-600 border border-red-100";
+    case "sent": return "bg-yellow-100 text-yellow-700 border border-yellow-200";
+    case "draft": return "bg-muted text-muted-foreground border border-border";
+    default: return "bg-muted text-muted-foreground border border-border";
+  }
+}
+
 function statusBadgeVariant(status: string | null) {
   switch (status) {
     case "paid": return "default";
@@ -506,7 +517,7 @@ export default function InvoicesPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-sm font-semibold">{formatCurrency(inv.amount)}</span>
-                    <Badge variant={statusBadgeVariant(inv.status) as any} className="text-[10px]">
+                    <Badge className={`text-[10px] ${statusBadgeClass(inv.status)}`}>
                       {inv.status}
                     </Badge>
                   </div>

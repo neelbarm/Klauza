@@ -25,9 +25,9 @@ function formatCurrency(cents: number): string {
 }
 
 function riskBadge(score: number) {
-  if (score >= 70) return { variant: "destructive" as const, label: "High Risk" };
-  if (score >= 40) return { variant: "secondary" as const, label: "Medium" };
-  return { variant: "outline" as const, label: "Low Risk" };
+  if (score >= 70) return { className: "bg-red-100 text-red-700 border border-red-200", label: "High Risk" };
+  if (score >= 40) return { className: "bg-yellow-100 text-yellow-700 border border-yellow-200", label: "Medium" };
+  return { className: "bg-green-100 text-green-700 border border-green-200", label: "Low Risk" };
 }
 
 export default function ClientsPage() {
@@ -159,7 +159,7 @@ export default function ClientsPage() {
                         )}
                       </div>
                     </div>
-                    <Badge variant={risk.variant} className="text-[10px]" data-testid={`badge-client-risk-${client.id}`}>
+                    <Badge className={`text-[10px] ${risk.className}`} data-testid={`badge-client-risk-${client.id}`}>
                       {risk.label}
                     </Badge>
                   </div>

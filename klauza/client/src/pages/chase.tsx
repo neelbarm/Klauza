@@ -95,10 +95,10 @@ const EVIDENCE_TYPES = [
 ];
 
 const stageConfig = [
-  { num: 1, name: "Friendly Reminder", icon: MessageSquare, color: "text-blue-500" },
+  { num: 1, name: "Friendly Reminder", icon: MessageSquare, color: "text-green-500" },
   { num: 2, name: "Formal Notice", icon: FileWarning, color: "text-yellow-500" },
-  { num: 3, name: "Demand Letter", icon: FileText, color: "text-orange-500" },
-  { num: 4, name: "Small Claims", icon: Gavel, color: "text-red-500" },
+  { num: 3, name: "Demand Letter", icon: FileText, color: "text-red-400" },
+  { num: 4, name: "Small Claims", icon: Gavel, color: "text-red-600" },
 ];
 
 function StageVisualization({ currentStage }: { currentStage: number }) {
@@ -302,9 +302,9 @@ function CountdownTimer({ deadlineDate, label }: { deadlineDate: string | null; 
 
   return (
     <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium ${
-      isOverdue ? "bg-red-50 text-red-700 border border-red-200" :
-      isUrgent ? "bg-orange-50 text-orange-700 border border-orange-200" :
-      "bg-blue-50 text-blue-700 border border-blue-200"
+      isOverdue ? "bg-red-100 text-red-700 border border-red-200" :
+      isUrgent ? "bg-yellow-100 text-yellow-700 border border-yellow-200" :
+      "bg-green-100 text-green-700 border border-green-200"
     }`}>
       <Timer className="h-3 w-3" />
       {isOverdue

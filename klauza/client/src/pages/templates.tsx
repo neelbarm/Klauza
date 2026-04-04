@@ -105,8 +105,9 @@ function ScoreCircleLarge({ score }: { score: number }) {
 function RiskBadge({ level }: { level: string }) {
   const variants: Record<string, string> = {
     CRITICAL: "bg-red-100 text-red-700 border-red-200",
-    HIGH: "bg-orange-100 text-orange-700 border-orange-200",
+    HIGH: "bg-red-50 text-red-600 border-red-100",
     MEDIUM: "bg-yellow-100 text-yellow-700 border-yellow-200",
+    MED: "bg-yellow-100 text-yellow-700 border-yellow-200",
     LOW: "bg-green-100 text-green-700 border-green-200",
   };
   return (

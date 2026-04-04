@@ -192,15 +192,15 @@ function HeroSection() {
             </div>
             <div className="space-y-2">
               <div className="flex items-start gap-2">
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium shrink-0">CRITICAL</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium border border-red-200 shrink-0">CRITICAL</span>
                 <p className="text-xs text-muted-foreground">No kill fee — client can cancel without compensation</p>
               </div>
               <div className="flex items-start gap-2">
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium shrink-0">HIGH</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 font-medium border border-red-100 shrink-0">HIGH</span>
                 <p className="text-xs text-muted-foreground">Payment upon completion only — no deposits or milestones</p>
               </div>
               <div className="flex items-start gap-2">
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium shrink-0">MED</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium border border-yellow-200 shrink-0">MED</span>
                 <p className="text-xs text-muted-foreground">IP transfers immediately — not tied to payment</p>
               </div>
             </div>
